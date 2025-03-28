@@ -59,15 +59,26 @@
     }
 
     // === Lights ===
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
     const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    dirLight.position.set(10, 15, 10);
+    dirLight.position.set(50, 50, 50);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
     dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.left = -50;
+    dirLight.shadow.camera.right = 50;
+    dirLight.shadow.camera.top = 50;
+    dirLight.shadow.camera.bottom = -50;
+    dirLight.shadow.camera.near = 0.5;
+    dirLight.shadow.camera.far = 200;
     scene.add(dirLight);
+
+    // Add a second, softer directional light for better shadow definition
+    const secondaryLight = new THREE.DirectionalLight(0xffffcc, 0.3);
+    secondaryLight.position.set(-30, 40, -30);
+    scene.add(secondaryLight);
 
     // === Global Parameters & Storage for Procedural Chunks ===
     const chunkSize = 50;
@@ -82,9 +93,6 @@
     }
 
     // === Procedural Chunk Generation ===
-    // Each chunk is a Group placed at (i*chunkSize, 0, j*chunkSize) in world coordinates.
-    // Inside the chunk we generate a grass base, two roads crossing at the chunk center,
-    // a simple intersection with traffic lights, and a few AI cars.
     function generateChunk(i, j) {
       const group = new THREE.Group();
       group.userData.chunkCoords = { i, j };
@@ -94,7 +102,6 @@
       const grassMat = new THREE.MeshPhongMaterial({ color: 0x7CFC00 });
       const grassMesh = new THREE.Mesh(grassGeo, grassMat);
       grassMesh.rotation.x = -Math.PI / 2;
-      // Place grass at local center (chunk coordinates 0..chunkSize)
       grassMesh.position.set(chunkSize / 2, 0, chunkSize / 2);
       group.add(grassMesh);
 
@@ -116,23 +123,11 @@
       horizRoad.position.set(chunkSize / 2, 0.01, chunkSize / 2);
       group.add(horizRoad);
 
-      // Intersection square (for visual clarity)
-      const interSize = 10;
-      const interGeo = new THREE.PlaneGeometry(interSize, interSize);
-      const interMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
-      const interMesh = new THREE.Mesh(interGeo, interMat);
-      interMesh.rotation.x = -Math.PI / 2;
-      interMesh.position.set(chunkSize / 2, 0.015, chunkSize / 2);
-      group.add(interMesh);
-
       // Add lane markings
       const markingMat = new THREE.MeshPhongMaterial({ color: 0xFFFFFF });
 
-      // Center dashed lines - Vertical road
-      for (let z = 5; z < chunkSize; z += 5) {
-        // Skip near intersection
-        if (Math.abs(z - chunkSize / 2) < interSize / 2) continue;
-
+      // Center dashed lines - Vertical road (north section)
+      for (let z = 5; z < chunkSize / 2 - roadWidth / 2; z += 5) {
         const dashMarkingGeo = new THREE.PlaneGeometry(0.3, 2);
         const dashMarking = new THREE.Mesh(dashMarkingGeo, markingMat);
         dashMarking.rotation.x = -Math.PI / 2;
@@ -140,11 +135,17 @@
         group.add(dashMarking);
       }
 
-      // Center dashed lines - Horizontal road
-      for (let x = 5; x < chunkSize; x += 5) {
-        // Skip near intersection
-        if (Math.abs(x - chunkSize / 2) < interSize / 2) continue;
+      // Center dashed lines - Vertical road (south section)
+      for (let z = chunkSize / 2 + roadWidth / 2; z < chunkSize; z += 5) {
+        const dashMarkingGeo = new THREE.PlaneGeometry(0.3, 2);
+        const dashMarking = new THREE.Mesh(dashMarkingGeo, markingMat);
+        dashMarking.rotation.x = -Math.PI / 2;
+        dashMarking.position.set(chunkSize / 2, 0.02, z);
+        group.add(dashMarking);
+      }
 
+      // Center dashed lines - Horizontal road (west section)
+      for (let x = 5; x < chunkSize / 2 - roadWidth / 2; x += 5) {
         const dashMarkingGeo = new THREE.PlaneGeometry(2, 0.3);
         const dashMarking = new THREE.Mesh(dashMarkingGeo, markingMat);
         dashMarking.rotation.x = -Math.PI / 2;
@@ -152,61 +153,28 @@
         group.add(dashMarking);
       }
 
-      // Edge solid lines - Vertical road
-      const vLeftLineGeo = new THREE.PlaneGeometry(0.3, chunkSize);
-      const vLeftLine = new THREE.Mesh(vLeftLineGeo, markingMat);
-      vLeftLine.rotation.x = -Math.PI / 2;
-      vLeftLine.position.set(chunkSize / 2 - roadWidth / 2 + 0.3, 0.02, chunkSize / 2);
-      group.add(vLeftLine);
-
-      const vRightLineGeo = new THREE.PlaneGeometry(0.3, chunkSize);
-      const vRightLine = new THREE.Mesh(vRightLineGeo, markingMat);
-      vRightLine.rotation.x = -Math.PI / 2;
-      vRightLine.position.set(chunkSize / 2 + roadWidth / 2 - 0.3, 0.02, chunkSize / 2);
-      group.add(vRightLine);
-
-      // Edge solid lines - Horizontal road
-      const hTopLineGeo = new THREE.PlaneGeometry(chunkSize, 0.3);
-      const hTopLine = new THREE.Mesh(hTopLineGeo, markingMat);
-      hTopLine.rotation.x = -Math.PI / 2;
-      hTopLine.position.set(chunkSize / 2, 0.02, chunkSize / 2 - roadWidth / 2 + 0.3);
-      group.add(hTopLine);
-
-      const hBottomLineGeo = new THREE.PlaneGeometry(chunkSize, 0.3);
-      const hBottomLine = new THREE.Mesh(hBottomLineGeo, markingMat);
-      hBottomLine.rotation.x = -Math.PI / 2;
-      hBottomLine.position.set(chunkSize / 2, 0.02, chunkSize / 2 + roadWidth / 2 - 0.3);
-      group.add(hBottomLine);
-
-      // Create traffic lights at each approach of the intersection
-      // We'll use a helper that repositions our existing createTrafficLight() output into the chunk.
-      function createTrafficLightLocal(offsetX, offsetZ, rotationY) {
-        const tl = createTrafficLight(0, 0, rotationY); // dummy position; we'll reposition it
-        // Position relative to chunk's local coordinate system:
-        tl.group.position.set(chunkSize / 2 + offsetX, 0, chunkSize / 2 + offsetZ);
-        group.add(tl.group);
-        return tl;
+      // Center dashed lines - Horizontal road (east section)
+      for (let x = chunkSize / 2 + roadWidth / 2; x < chunkSize; x += 5) {
+        const dashMarkingGeo = new THREE.PlaneGeometry(2, 0.3);
+        const dashMarking = new THREE.Mesh(dashMarkingGeo, markingMat);
+        dashMarking.rotation.x = -Math.PI / 2;
+        dashMarking.position.set(x, 0.02, chunkSize / 2);
+        group.add(dashMarking);
       }
-      const northTL = createTrafficLightLocal(3, -10, 0);       // north approach
-      const southTL = createTrafficLightLocal(-3, 10, Math.PI);   // south approach
-      const eastTL = createTrafficLightLocal(10, 3, Math.PI / 2);  // east approach
-      const westTL = createTrafficLightLocal(-10, -3, -Math.PI / 2);// west approach
-      group.userData.trafficLights = [northTL, southTL, eastTL, westTL];
 
       // Spawn a few AI cars on the roads in this chunk
       group.userData.aiCars = [];
       const numAICars = Math.floor(Math.random() * 2) + 1; // 1 or 2 AI cars
       for (let a = 0; a < numAICars; a++) {
         const aiCar = createCar(0xff0000 + Math.floor(Math.random() * 0xffffff));
-        // Randomly choose vertical or horizontal road:
         if (Math.random() < 0.5) {
-          // Place on vertical road: x = chunkSize/2 (center of vertical road), z random within chunk
+          // vertical road
           aiCar.position.set(chunkSize / 2, 0, Math.random() * chunkSize);
           const direction = Math.random() < 0.5 ? "north" : "south";
           aiCar.rotation.y = (direction === "north") ? 0 : Math.PI;
           group.userData.aiCars.push({ mesh: aiCar, direction });
         } else {
-          // Place on horizontal road: z = chunkSize/2, x random within chunk
+          // horizontal road
           aiCar.position.set(Math.random() * chunkSize, 0, chunkSize / 2);
           const direction = Math.random() < 0.5 ? "east" : "west";
           aiCar.rotation.y = (direction === "east") ? -Math.PI / 2 : Math.PI / 2;
@@ -215,21 +183,55 @@
         group.add(aiCar);
       }
 
+      // === Place Traffic Lights on the right side of each approach ===
+      placeTrafficLightsRightSide(group);
+
       // Position the entire chunk group in world space
       group.position.set(i * chunkSize, 0, j * chunkSize);
       scene.add(group);
+
+      // (Buildings, fences, trees, etc. remain unchanged)
+      const offset = 15;
+      const buildingPositions = [
+        { x: chunkSize / 2 - offset, z: chunkSize / 2 - offset },
+        { x: chunkSize / 2 + offset, z: chunkSize / 2 - offset },
+        { x: chunkSize / 2 - offset, z: chunkSize / 2 + offset },
+        { x: chunkSize / 2 + offset, z: chunkSize / 2 + offset }
+      ];
+
+      buildingPositions.forEach(pos => {
+        if (Math.random() > 0.6) {
+          const width = 8 + Math.random() * 6;
+          const depth = 8 + Math.random() * 6;
+          const height = 10 + Math.random() * 10;
+          createBuilding(pos.x, pos.z, width, depth, height);
+
+          if (Math.random() > 0.7) {
+            createFence(pos.x, pos.z, width + 4, depth + 4);
+          }
+        }
+      });
+
+      for (let k = 0; k < 4; k++) {
+        const cornerX = (Math.random() > 0.5)
+          ? chunkSize / 2 - offset - 10 - Math.random() * 10
+          : chunkSize / 2 + offset + 10 + Math.random() * 10;
+        const cornerZ = (Math.random() > 0.5)
+          ? chunkSize / 2 - offset - 10 - Math.random() * 10
+          : chunkSize / 2 + offset + 10 + Math.random() * 10;
+        createTree(cornerX, cornerZ);
+      }
+
       return group;
     }
 
     // === Update the World (Generate new chunks and remove far-away ones) ===
     function updateWorld() {
-      // Determine player's current chunk coordinates
       const pX = playerCar.position.x;
       const pZ = playerCar.position.z;
       const curI = Math.floor(pX / chunkSize);
       const curJ = Math.floor(pZ / chunkSize);
 
-      // Generate chunks within the radius around the player
       for (let i = curI - chunkRadius; i <= curI + chunkRadius; i++) {
         for (let j = curJ - chunkRadius; j <= curJ + chunkRadius; j++) {
           const key = getChunkKey(i, j);
@@ -239,7 +241,6 @@
         }
       }
 
-      // Optionally remove chunks that are far away (e.g., outside radius+1)
       for (const key in activeChunks) {
         const chunk = activeChunks[key];
         const { i, j } = chunk.userData.chunkCoords;
@@ -252,11 +253,9 @@
 
     // === Update AI Cars ===
     function updateAICars(delta) {
-      // Process AI cars in all active chunks
       for (const key in activeChunks) {
         const chunk = activeChunks[key];
         if (!chunk.userData.aiCars) continue;
-
         const aiCars = chunk.userData.aiCars;
         const trafficLights = chunk.userData.trafficLights;
 
@@ -264,55 +263,38 @@
           const car = aiCars[i];
           let shouldMove = true;
 
-          // Update car's collision box if not already set
           if (!car.mesh.collisionBox) {
             car.mesh.collisionBox = new THREE.Box3().setFromObject(car.mesh);
           } else {
             car.mesh.collisionBox.setFromObject(car.mesh);
           }
 
-          // Check for traffic lights if we're near the center of the chunk
-          // Convert car's position to chunk-local coordinates
           const localX = car.mesh.position.x - chunk.position.x;
           const localZ = car.mesh.position.z - chunk.position.z;
           const centerX = chunkSize / 2;
           const centerZ = chunkSize / 2;
 
-          // Store waiting status
           if (!car.waiting) car.waiting = false;
 
-          // Check distance to intersection (roughly at chunk center)
-          const distToIntersection = Math.sqrt(
-            Math.pow(localX - centerX, 2) +
-            Math.pow(localZ - centerZ, 2)
-          );
+          const distToIntersection = Math.sqrt((localX - centerX) ** 2 + (localZ - centerZ) ** 2);
 
-          // If near intersection, check traffic lights
-          if (distToIntersection < 12) {
-            if (car.direction === "north" && trafficLights &&
-              localZ > centerZ && localZ < centerZ + 10) {
-              // Check north-facing traffic light (index 0)
+          if (distToIntersection < 12 && trafficLights) {
+            if (car.direction === "north" && localZ > centerZ && localZ < centerZ + 10) {
               if (trafficLights[0].getState() !== "GREEN") {
                 shouldMove = false;
                 car.waiting = true;
               }
-            } else if (car.direction === "south" && trafficLights &&
-              localZ < centerZ && localZ > centerZ - 10) {
-              // Check south-facing traffic light (index 1)
+            } else if (car.direction === "south" && localZ < centerZ && localZ > centerZ - 10) {
               if (trafficLights[1].getState() !== "GREEN") {
                 shouldMove = false;
                 car.waiting = true;
               }
-            } else if (car.direction === "east" && trafficLights &&
-              localX < centerX && localX > centerX - 10) {
-              // Check east-facing traffic light (index 2)
+            } else if (car.direction === "east" && localX < centerX && localX > centerX - 10) {
               if (trafficLights[2].getState() !== "GREEN") {
                 shouldMove = false;
                 car.waiting = true;
               }
-            } else if (car.direction === "west" && trafficLights &&
-              localX > centerX && localX < centerX + 10) {
-              // Check west-facing traffic light (index 3)
+            } else if (car.direction === "west" && localX > centerX && localX < centerX + 10) {
               if (trafficLights[3].getState() !== "GREEN") {
                 shouldMove = false;
                 car.waiting = true;
@@ -321,12 +303,9 @@
               car.waiting = false;
             }
 
-            // If very close to intersection center, possibly turn
             if (distToIntersection < 2) {
-              // 20% chance to turn at intersection
               if (!car.hasTurned && Math.random() < 0.2) {
                 const turn = Math.random() < 0.5 ? "left" : "right";
-                // Apply the turn
                 if (car.direction === "north") {
                   if (turn === "left") {
                     car.direction = "west";
@@ -367,14 +346,14 @@
             }
           }
 
-          // Check for collisions with player car
+          // Collision with player
           const playerBox = new THREE.Box3().setFromObject(playerCar);
           if (car.mesh.collisionBox.intersectsBox(playerBox)) {
             shouldMove = false;
             infractions.add("collision");
           }
 
-          // Check for collisions with other AI cars in the same chunk
+          // Collision with other AI cars
           for (let j = 0; j < aiCars.length; j++) {
             if (i !== j) {
               const otherCar = aiCars[j];
@@ -382,114 +361,80 @@
                 otherCar.mesh.collisionBox = new THREE.Box3().setFromObject(otherCar.mesh);
               }
               if (car.mesh.collisionBox.intersectsBox(otherCar.mesh.collisionBox)) {
-                if (distToIntersection >= 12) {  // Don't stop if near intersection
+                if (distToIntersection >= 12) {
                   shouldMove = false;
                 }
               }
             }
           }
 
-          // Move the car if allowed
           if (shouldMove) {
-            const speed = 0.05 * delta * 60; // Normalize for 60fps
-
+            const speed = 0.05 * delta * 60;
             if (car.direction === "north") {
               car.mesh.position.z -= speed;
-
-              // Handle leaving the chunk boundaries
               if (localZ < 1) {
-                // Check if there's a chunk to the north
                 const northKey = getChunkKey(chunk.userData.chunkCoords.i, chunk.userData.chunkCoords.j - 1);
                 const northChunk = activeChunks[northKey];
                 if (northChunk) {
-                  // Transfer the car to the north chunk
                   chunk.remove(car.mesh);
                   northChunk.add(car.mesh);
-                  // Update position relative to new chunk
                   car.mesh.position.z = chunkSize + localZ;
-                  // Add to new chunk's AI cars
                   if (!northChunk.userData.aiCars) northChunk.userData.aiCars = [];
                   northChunk.userData.aiCars.push(car);
-                  // Remove from current chunk
                   aiCars.splice(i, 1);
-                  i--; // Adjust index after removal
+                  i--;
                 } else {
-                  // Wrap to the south end of the current chunk
                   car.mesh.position.z = chunk.position.z + chunkSize - 1;
                 }
               }
             } else if (car.direction === "south") {
               car.mesh.position.z += speed;
-
-              // Handle leaving the chunk boundaries
               if (localZ > chunkSize - 1) {
-                // Check if there's a chunk to the south
                 const southKey = getChunkKey(chunk.userData.chunkCoords.i, chunk.userData.chunkCoords.j + 1);
                 const southChunk = activeChunks[southKey];
                 if (southChunk) {
-                  // Transfer the car to the south chunk
                   chunk.remove(car.mesh);
                   southChunk.add(car.mesh);
-                  // Update position relative to new chunk
                   car.mesh.position.z = chunk.position.z + localZ - chunkSize;
-                  // Add to new chunk's AI cars
                   if (!southChunk.userData.aiCars) southChunk.userData.aiCars = [];
                   southChunk.userData.aiCars.push(car);
-                  // Remove from current chunk
                   aiCars.splice(i, 1);
-                  i--; // Adjust index after removal
+                  i--;
                 } else {
-                  // Wrap to the north end of the current chunk
                   car.mesh.position.z = chunk.position.z + 1;
                 }
               }
             } else if (car.direction === "east") {
               car.mesh.position.x += speed;
-
-              // Handle leaving the chunk boundaries
               if (localX > chunkSize - 1) {
-                // Check if there's a chunk to the east
                 const eastKey = getChunkKey(chunk.userData.chunkCoords.i + 1, chunk.userData.chunkCoords.j);
                 const eastChunk = activeChunks[eastKey];
                 if (eastChunk) {
-                  // Transfer the car to the east chunk
                   chunk.remove(car.mesh);
                   eastChunk.add(car.mesh);
-                  // Update position relative to new chunk
                   car.mesh.position.x = chunk.position.x + localX - chunkSize;
-                  // Add to new chunk's AI cars
                   if (!eastChunk.userData.aiCars) eastChunk.userData.aiCars = [];
                   eastChunk.userData.aiCars.push(car);
-                  // Remove from current chunk
                   aiCars.splice(i, 1);
-                  i--; // Adjust index after removal
+                  i--;
                 } else {
-                  // Wrap to the west end of the current chunk
                   car.mesh.position.x = chunk.position.x + 1;
                 }
               }
             } else if (car.direction === "west") {
               car.mesh.position.x -= speed;
-
-              // Handle leaving the chunk boundaries
               if (localX < 1) {
-                // Check if there's a chunk to the west
                 const westKey = getChunkKey(chunk.userData.chunkCoords.i - 1, chunk.userData.chunkCoords.j);
                 const westChunk = activeChunks[westKey];
                 if (westChunk) {
-                  // Transfer the car to the west chunk
                   chunk.remove(car.mesh);
                   westChunk.add(car.mesh);
-                  // Update position relative to new chunk
                   car.mesh.position.x = chunkSize + localX;
-                  // Add to new chunk's AI cars
                   if (!westChunk.userData.aiCars) westChunk.userData.aiCars = [];
                   westChunk.userData.aiCars.push(car);
-                  // Remove from current chunk
                   aiCars.splice(i, 1);
-                  i--; // Adjust index after removal
+                  i--;
                 } else {
-                  // Wrap to the east end of the current chunk
                   car.mesh.position.x = chunk.position.x + chunkSize - 1;
                 }
               }
@@ -499,73 +444,138 @@
       }
     }
 
-    // === (Existing) Traffic Light Functions ===
+    function placeTrafficLightsRightSide(chunkGroup) {
+      // We'll place them near the intersection center (which is at (chunkSize/2, chunkSize/2))
+      // The road is 8 wide => ±4 from center
+      // We'll offset each light ~8 units from center along the approach, and ~3.5 from center in the perpendicular direction
+      // so it stands just off the lane on the "right side" from the driver's perspective.
+
+      const c = chunkSize / 2;   // intersection center
+      const halfRoad = 4;        // half of 8
+      const approachDist = 6;    // how far from intersection center along the approach
+      const sideOffset = 3.5;    // how far from center in the perpendicular direction
+
+      // North approach => road goes from z < center to z= center
+      // The "right side" from the driver's perspective is to the east => + sideOffset in x
+      // We'll place the traffic light at (center + sideOffset, center - approachDist)
+      // and face it south (rotation = 0)
+      const northTL = createTrafficLightLocal(
+        c + sideOffset, // x
+        c - approachDist, // z
+        0 // rotation
+      );
+
+      // South approach => road goes from z > center to z= center
+      // The "right side" is to the west => - sideOffset in x
+      // We'll place the traffic light at (center - sideOffset, center + approachDist)
+      // and face it north (rotation = Math.PI)
+      const southTL = createTrafficLightLocal(
+        c - sideOffset,
+        c + approachDist,
+        Math.PI
+      );
+
+      // East approach => road goes from x > center to x= center
+      // The "right side" is to the south => + sideOffset in z
+      // We'll place it at (center + approachDist, center + sideOffset)
+      // and face it west (rotation = Math.PI/2)
+      const eastTL = createTrafficLightLocal(
+        c + approachDist,
+        c + sideOffset,
+        Math.PI / 2
+      );
+
+      // West approach => road goes from x < center to x= center
+      // The "right side" is to the north => - sideOffset in z
+      // We'll place it at (center - approachDist, center - sideOffset)
+      // and face it east (rotation = -Math.PI/2)
+      const westTL = createTrafficLightLocal(
+        c - approachDist,
+        c - sideOffset,
+        -Math.PI / 2
+      );
+
+      // Store them for reference
+      chunkGroup.userData.trafficLights = [northTL, southTL, eastTL, westTL];
+
+      // Helper that uses the existing createTrafficLight(...) and positions it
+      function createTrafficLightLocal(worldX, worldZ, rotationY) {
+        const tl = createTrafficLight(0, 0, rotationY);
+        tl.group.position.set(worldX, 0, worldZ);
+        chunkGroup.add(tl.group);
+        return tl;
+      }
+    }
+
     function createTrafficLight(posX, posZ, rotationY) {
       const group = new THREE.Group();
 
-      // Pole
-      const lightPoleGeom = new THREE.BoxGeometry(0.1, 3, 0.1);
+      // Example: a taller, slightly thicker pole
+      const lightPoleGeom = new THREE.BoxGeometry(0.12, 3.5, 0.12);
       const lightPoleMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
       const trafficLightPole = new THREE.Mesh(lightPoleGeom, lightPoleMat);
-      trafficLightPole.position.y = 1.5;
-      trafficLightPole.castShadow = true;
+      trafficLightPole.position.y = 1.75;
       group.add(trafficLightPole);
 
       // Light box
-      const lightBoxGeom = new THREE.BoxGeometry(0.3, 0.9, 0.3);
-      const lightBoxMat = new THREE.MeshPhongMaterial({ color: 0x333333 });
+      const lightBoxGeom = new THREE.BoxGeometry(0.4, 1.2, 0.4);
+      const lightBoxMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
       const trafficLightBox = new THREE.Mesh(lightBoxGeom, lightBoxMat);
-      trafficLightBox.position.y = 2.8;
-      trafficLightBox.castShadow = true;
+      trafficLightBox.position.y = 2.9;
       group.add(trafficLightBox);
 
-      // Lights (red, yellow, green)
-      const lightGeom = new THREE.CircleGeometry(0.1, 16);
-      const redLightMat = new THREE.MeshPhongMaterial({ color: 0x660000, emissive: 0x330000 });
+      // Larger circle geometry
+      const circleRadius = 0.11;
+      const lightGeom = new THREE.CircleGeometry(circleRadius, 16);
+
+      // Red
+      const redLightMat = new THREE.MeshPhongMaterial({ color: 0xff0000 });
       const redLight = new THREE.Mesh(lightGeom, redLightMat);
-      redLight.position.set(0, 3.0, 0.16);
-      redLight.rotation.x = -Math.PI / 2;
+      // Position in front of the box along negative Z
+      redLight.position.set(0, 3.2, -0.21);
+      // Flip the normal from +Z to -Z
+      redLight.rotation.y = Math.PI;
       group.add(redLight);
 
-      const yellowLightMat = new THREE.MeshPhongMaterial({ color: 0x666600, emissive: 0x333300 });
+      // Yellow
+      const yellowLightMat = new THREE.MeshPhongMaterial({ color: 0xffff00 });
       const yellowLight = new THREE.Mesh(lightGeom, yellowLightMat);
-      yellowLight.position.set(0, 2.8, 0.16);
-      yellowLight.rotation.x = -Math.PI / 2;
+      yellowLight.position.set(0, 2.9, -0.21);
+      yellowLight.rotation.y = Math.PI;
       group.add(yellowLight);
 
-      const greenLightMat = new THREE.MeshPhongMaterial({ color: 0x006600, emissive: 0x003300 });
+      // Green
+      const greenLightMat = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
       const greenLight = new THREE.Mesh(lightGeom, greenLightMat);
-      greenLight.position.set(0, 2.6, 0.16);
-      greenLight.rotation.x = -Math.PI / 2;
+      greenLight.position.set(0, 2.6, -0.21);
+      greenLight.rotation.y = Math.PI;
       group.add(greenLight);
 
+      // If your traffic light group is meant to face negative Z at rotationY=0,
+      // this will make the circles point outward (toward negative Z).
       group.rotation.y = rotationY;
-      // (Don't add to scene here—this will be added to a chunk.)
       return {
-        group: group,
+        group,
         red: redLight,
         yellow: yellowLight,
         green: greenLight,
         state: "RED",
-        getState: function () { return this.state; }
+        getState() { return this.state; }
       };
     }
 
     function updateTrafficLights(delta) {
-      // For each active chunk, update its traffic lights (each chunk manages its own)
       for (const key in activeChunks) {
         const chunk = activeChunks[key];
         if (chunk.userData.trafficLights) {
           chunk.userData.trafficLights.forEach(tl => {
-            // Simple cycle: you can customize per chunk if desired.
-            // For this example, we use a timer stored in the chunk.
             if (!chunk.userData.tlTimer) chunk.userData.tlTimer = 0;
             chunk.userData.tlTimer += delta;
             const cycle = 10 + 3 + 13;
             const mod = chunk.userData.tlTimer % cycle;
             if (mod < 10) {
               setTrafficLightState(tl, "GREEN");
-            } else if (mod < 10 + 3) {
+            } else if (mod < 13) {
               setTrafficLightState(tl, "YELLOW");
             } else {
               setTrafficLightState(tl, "RED");
@@ -589,7 +599,6 @@
       }
     }
 
-    // === (Existing) Car and AI Functions ===
     function createCar(color, isPlayer = false) {
       const carGroup = new THREE.Group();
 
@@ -609,7 +618,7 @@
       carRoof.castShadow = true;
       carGroup.add(carRoof);
 
-      // Wheels (front wheels with pivot for steering)
+      // Wheels
       const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
       const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x111111 });
       const frontLeftPivot = new THREE.Group();
@@ -627,7 +636,6 @@
       frontRightWheel.castShadow = true;
       frontRightPivot.add(frontRightWheel);
 
-      // Rear wheels
       const rearLeftWheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
       rearLeftWheel.position.set(-0.5, 0.3, -0.7);
       rearLeftWheel.rotation.z = Math.PI / 2;
@@ -639,7 +647,6 @@
       rearRightWheel.castShadow = true;
       carGroup.add(rearRightWheel);
 
-      // Store wheel pivots for steering
       carGroup.frontLeftPivot = frontLeftPivot;
       carGroup.frontRightPivot = frontRightPivot;
 
@@ -657,15 +664,15 @@
         carGroup.add(rightHeadlight);
       }
 
-      // Collision box (for detection)
       carGroup.collisionBox = new THREE.Box3();
       scene.add(carGroup);
       return carGroup;
     }
 
-    // Player car and its physics state (bicycle model, etc.)
+    // Player Car
     const playerCar = createCar(0x0000ff, true);
     playerCar.position.set(0, 0, 10);
+
     let carState = {
       position: new THREE.Vector2(0, 10),
       heading: 0,
@@ -674,6 +681,7 @@
     };
     let carVelocityX = 0;
     let carVelocityZ = 0;
+
     const CAR_SPECS = {
       maxSteeringAngle: THREE.MathUtils.degToRad(30),
       wheelBase: 1.4,
@@ -688,7 +696,7 @@
 
     function updatePlayerCar(delta) {
       const timeScale = delta * 60;
-      // Handle steering input
+      // Steering
       if (keys.ArrowLeft) {
         carState.wheelAngle += CAR_SPECS.steeringSpeed * timeScale;
         carState.wheelAngle = Math.min(carState.wheelAngle, CAR_SPECS.maxSteeringAngle);
@@ -707,7 +715,7 @@
       playerCar.frontLeftPivot.rotation.y = carState.wheelAngle;
       playerCar.frontRightPivot.rotation.y = carState.wheelAngle;
 
-      // Handle acceleration/braking
+      // Accel / Brake
       const forward = keys.ArrowUp;
       const backward = keys.ArrowDown;
       if (forward && !backward) {
@@ -730,17 +738,17 @@
           carState.velocity -= Math.sign(carState.velocity) * CAR_SPECS.friction * timeScale;
         }
       }
-      if (carState.velocity > CAR_SPECS.maxSpeed) { carState.velocity = CAR_SPECS.maxSpeed; }
-      if (carState.velocity < -CAR_SPECS.maxReverseSpeed) { carState.velocity = -CAR_SPECS.maxReverseSpeed; }
+      if (carState.velocity > CAR_SPECS.maxSpeed) carState.velocity = CAR_SPECS.maxSpeed;
+      if (carState.velocity < -CAR_SPECS.maxReverseSpeed) carState.velocity = -CAR_SPECS.maxReverseSpeed;
 
-      // Bicycle model update
+      // Bicycle model
       if (Math.abs(carState.velocity) > 0.001) {
         const speed = Math.abs(carState.velocity);
         const direction = Math.sign(carState.velocity);
-        // When reversing, flip the steering effect:
         const effectiveWheelAngle = carState.wheelAngle * direction;
+
         if (direction > 0) {
-          // Forward: simple update
+          // Forward
           const frontX = carState.position.x + Math.sin(carState.heading) * CAR_SPECS.wheelBase;
           const frontY = carState.position.y + Math.cos(carState.heading) * CAR_SPECS.wheelBase;
           const newFrontX = frontX + Math.sin(carState.heading + effectiveWheelAngle) * speed;
@@ -754,8 +762,7 @@
           carState.position.y = newRearY;
           carState.heading = newHeading;
         } else {
-          // Reverse: move backward and adjust heading accordingly
-          // Here we use a slightly different model
+          // Reverse
           const angularChange = speed / CAR_SPECS.wheelBase * Math.tan(effectiveWheelAngle);
           const newHeading = carState.heading - angularChange;
           const newRearX = carState.position.x - Math.sin(newHeading) * speed;
@@ -767,7 +774,6 @@
           carState.heading = newHeading;
         }
       }
-      // Apply updated state to player car model
       playerCar.position.x = carState.position.x;
       playerCar.position.z = carState.position.y;
       playerCar.rotation.y = carState.heading;
@@ -792,66 +798,48 @@
     }
 
     function checkTrafficLightViolations() {
-      // Get current direction of travel from velocity
       const movingNorth = carVelocityZ < -0.01;
       const movingSouth = carVelocityZ > 0.01;
       const movingEast = carVelocityX > 0.01;
       const movingWest = carVelocityX < -0.01;
 
-      // Get player's current chunk
       const pX = playerCar.position.x;
       const pZ = playerCar.position.z;
       const curI = Math.floor(pX / chunkSize);
       const curJ = Math.floor(pZ / chunkSize);
       const key = getChunkKey(curI, curJ);
       const chunk = activeChunks[key];
-
       if (!chunk || !chunk.userData.trafficLights) return;
 
-      // Convert player position to chunk-local coordinates
       const localX = pX - chunk.position.x;
       const localZ = pZ - chunk.position.z;
       const centerX = chunkSize / 2;
       const centerZ = chunkSize / 2;
-
-      // Distance to intersection center
-      const distToIntersection = Math.sqrt(
-        Math.pow(localX - centerX, 2) +
-        Math.pow(localZ - centerZ, 2)
-      );
-
-      // Only check if within reasonable distance of intersection
+      const distToIntersection = Math.sqrt((localX - centerX) ** 2 + (localZ - centerZ) ** 2);
       if (distToIntersection > 15) return;
 
       const trafficLights = chunk.userData.trafficLights;
 
-      // North approach check (player is south of intersection, moving north)
-      if (localZ > centerZ && localZ < centerZ + 10 &&
-        Math.abs(localX - centerX) < 4) {
+      // North approach
+      if (localZ > centerZ && localZ < centerZ + 10 && Math.abs(localX - centerX) < 4) {
         if (movingNorth && trafficLights[0].getState() !== "GREEN") {
           infractions.add("ran_red_light");
         }
       }
-
-      // South approach check (player is north of intersection, moving south)
-      else if (localZ < centerZ && localZ > centerZ - 10 &&
-        Math.abs(localX - centerX) < 4) {
+      // South approach
+      else if (localZ < centerZ && localZ > centerZ - 10 && Math.abs(localX - centerX) < 4) {
         if (movingSouth && trafficLights[1].getState() !== "GREEN") {
           infractions.add("ran_red_light");
         }
       }
-
-      // East approach check (player is west of intersection, moving east)
-      else if (localX < centerX && localX > centerX - 10 &&
-        Math.abs(localZ - centerZ) < 4) {
+      // East approach
+      else if (localX < centerX && localX > centerX - 10 && Math.abs(localZ - centerZ) < 4) {
         if (movingEast && trafficLights[2].getState() !== "GREEN") {
           infractions.add("ran_red_light");
         }
       }
-
-      // West approach check (player is east of intersection, moving west)
-      else if (localX > centerX && localX < centerX + 10 &&
-        Math.abs(localZ - centerZ) < 4) {
+      // West approach
+      else if (localX > centerX && localX < centerX + 10 && Math.abs(localZ - centerZ) < 4) {
         if (movingWest && trafficLights[3].getState() !== "GREEN") {
           infractions.add("ran_red_light");
         }
@@ -865,36 +853,142 @@
       container.innerHTML = "<h3>Infractions:</h3>";
       infractions.forEach(inf => {
         let p = document.createElement("p");
-        if (inf === "speeding") { p.innerText = "Speeding"; p.style.color = "red"; }
-        else if (inf === "ran_red_light") { p.innerText = "Red Light Violation"; p.style.color = "red"; }
-        else if (inf === "collision") { p.innerText = "Collision with another vehicle"; p.style.color = "red"; }
+        if (inf === "speeding") {
+          p.innerText = "Speeding";
+          p.style.color = "red";
+        } else if (inf === "ran_red_light") {
+          p.innerText = "Red Light Violation";
+          p.style.color = "red";
+        } else if (inf === "collision") {
+          p.innerText = "Collision with another vehicle";
+          p.style.color = "red";
+        }
         container.appendChild(p);
       });
     }
 
-    // === Keyboard Input ===
     const keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false };
     window.addEventListener("keydown", e => { if (keys.hasOwnProperty(e.code)) keys[e.code] = true; });
     window.addEventListener("keyup", e => { if (keys.hasOwnProperty(e.code)) keys[e.code] = false; });
 
-    // === Infractions Set ===
     const infractions = new Set();
 
-    // === Main Animate Loop ===
     let clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
       let delta = clock.getDelta();
-      updateWorld();              // Procedurally generate/remove chunks
-      updateTrafficLights(delta); // Update traffic lights in all chunks
-      updatePlayerCar(delta);     // Update player car physics
-      updateAICars(delta);        // Update AI cars in all chunks
+      updateWorld();
+      updateTrafficLights(delta);
+      updatePlayerCar(delta);
+      updateAICars(delta);
       updateCamera();
       checkTrafficLightViolations();
       renderer.render(scene, camera);
       updateInfractionDisplay();
     }
     animate();
+
+    // Create a simple tree
+    function createTree(posX, posZ) {
+      const tree = new THREE.Group();
+
+      // Tree trunk
+      const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 3, 8);
+      const trunkMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 });
+      const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+      trunk.position.y = 1.5;
+      trunk.castShadow = true;
+      tree.add(trunk);
+
+      // Tree leaves
+      const leavesGeometry = new THREE.ConeGeometry(2, 4, 8);
+      const leavesMaterial = new THREE.MeshPhongMaterial({
+        color: 0x2E8B57,
+        flatShading: true
+      });
+      const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+      leaves.position.y = 4.5;
+      leaves.castShadow = true;
+      tree.add(leaves);
+
+      tree.position.set(posX, 0, posZ);
+      tree.rotation.y = Math.random() * Math.PI * 2;
+      scene.add(tree);
+      return tree;
+    }
+
+    function createFence(posX, posZ, width, depth) {
+      // (Same fence code as before)
+      const fence = new THREE.Group();
+      const fenceMaterial = new THREE.MeshPhongMaterial({ color: 0xA0522D });
+      const halfWidth = width / 2;
+      const halfDepth = depth / 2;
+
+      // Corner posts
+      const cornerPositions = [
+        { x: -halfWidth, z: -halfDepth },
+        { x: halfWidth, z: -halfDepth },
+        { x: halfWidth, z: halfDepth },
+        { x: -halfWidth, z: halfDepth }
+      ];
+      cornerPositions.forEach(pos => {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 0.1), fenceMaterial);
+        post.position.set(pos.x, 0.6, pos.z);
+        post.castShadow = true;
+        fence.add(post);
+      });
+
+      // 2 rails per side
+      const northTop = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, 0.05), fenceMaterial);
+      northTop.position.set(0, 0.9, -halfDepth);
+      fence.add(northTop);
+      const northBottom = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, 0.05), fenceMaterial);
+      northBottom.position.set(0, 0.3, -halfDepth);
+      fence.add(northBottom);
+
+      const southTop = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, 0.05), fenceMaterial);
+      southTop.position.set(0, 0.9, halfDepth);
+      fence.add(southTop);
+      const southBottom = new THREE.Mesh(new THREE.BoxGeometry(width, 0.05, 0.05), fenceMaterial);
+      southBottom.position.set(0, 0.3, halfDepth);
+      fence.add(southBottom);
+
+      const eastTop = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, depth), fenceMaterial);
+      eastTop.position.set(halfWidth, 0.9, 0);
+      fence.add(eastTop);
+      const eastBottom = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, depth), fenceMaterial);
+      eastBottom.position.set(halfWidth, 0.3, 0);
+      fence.add(eastBottom);
+
+      const westTop = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, depth), fenceMaterial);
+      westTop.position.set(-halfWidth, 0.9, 0);
+      fence.add(westTop);
+      const westBottom = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, depth), fenceMaterial);
+      westBottom.position.set(-halfWidth, 0.3, 0);
+      fence.add(westBottom);
+
+      fence.position.set(posX, 0, posZ);
+      scene.add(fence);
+      return fence;
+    }
+
+    function createBuilding(posX, posZ, width, depth, height) {
+      const buildingMaterial = new THREE.MeshPhongMaterial({
+        color: new THREE.Color(`rgb(${180 + Math.floor(Math.random() * 40)
+          },${180 + Math.floor(Math.random() * 40)
+          },${180 + Math.floor(Math.random() * 40)
+          })`),
+        flatShading: true
+      });
+      const buildingGeometry = new THREE.BoxGeometry(width, height, depth);
+      const building = new THREE.Mesh(buildingGeometry, buildingMaterial);
+      building.position.set(posX, height / 2, posZ);
+      building.castShadow = true;
+      building.receiveShadow = true;
+      building.rotation.y = Math.floor(Math.random() * 4) * Math.PI / 2;
+      scene.add(building);
+      return building;
+    }
   </script>
 </body>
 
