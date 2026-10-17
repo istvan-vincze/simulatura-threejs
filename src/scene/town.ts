@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { box, cylinder, material, mesh, plaque } from "./primitives";
 import { createCar } from "./car";
+import { createRoof } from "./roof";
 import { prioritySign, stopSign, trafficLight } from "./signage";
 import type { ScenarioId } from "../domain/scenarios";
 import type { Signal } from "../domain/signals";
@@ -44,17 +45,9 @@ function building(
   box(g, [w + 0.15, 0.55, depth + 0.15], [0, 0.4, 0], "#c2b9a4");
   for (const y of [3.1, h + 0.1])
     box(g, [w + 0.3, 0.2, depth + 0.3], [0, y, 0], "#f0e5ce");
-  const roof = mesh(
-    g,
-    new THREE.CylinderGeometry(0, 1, 1, 4),
-    material("#677771"),
-    0,
-    h + 1.6,
-    0,
-  );
-  roof.rotation.y = Math.PI / 4;
-  roof.scale.set(w * 0.78, 3, depth * 0.78);
-  box(g, [0.65, 1.8, 0.65], [w * 0.28, h + 1.9, 0], "#bcae94");
+  const roof = createRoof(w, depth);
+  roof.position.y = h + 0.2;
+  g.add(roof);
   for (const side of [-1, 1]) {
     for (let y = 1.65; y < h - 0.3; y += 2.5)
       for (let wx = -w / 2 + 1.5; wx < w / 2 - 0.5; wx += 2.25) {
