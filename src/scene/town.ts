@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { box, cylinder, material, mesh, plaque } from "./primitives";
 import { createCar } from "./car";
 import { createRoof } from "./roof";
+import { createPavement } from "./pavement";
 import { prioritySign, stopSign, trafficLight } from "./signage";
 import type { ScenarioId } from "../domain/scenarios";
 import type { Signal } from "../domain/signals";
@@ -115,23 +116,7 @@ export interface Town {
 export function createTown(): Town {
   const root = new THREE.Group();
   box(root, [100, 1, 100], [0, -0.65, 0], "#b5baa0");
-  box(root, [8, 0.08, 100], [0, -0.01, 0], "#656b68");
-  box(root, [100, 0.08, 8], [0, 0, 0], "#656b68");
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1]) {
-      box(root, [44, 0.22, 44], [sx * 28, 0.02, sz * 28], "#d5cfbd");
-      box(root, [41, 0.05, 41], [sx * 29.5, 0.16, sz * 29.5], "#b7bea0");
-      for (let n = 8; n < 50; n += 2) {
-        box(root, [1.8, 0.13, 0.22], [sx * n, 0.13, sz * 6], "#eee4d0");
-        box(root, [0.22, 0.13, 1.8], [sx * 6, 0.13, sz * n], "#eee4d0");
-      }
-    }
-  // Flush corner aprons preserve sightlines. No scenery intrudes into the 8 m carriageway.
-  for (const sx of [-1, 1])
-    for (const sz of [-1, 1]) {
-      box(root, [2, 0.12, 44], [sx * 5, 0.02, sz * 28], "#d5cfbd");
-      box(root, [44, 0.12, 2], [sx * 28, 0.02, sz * 5], "#d5cfbd");
-    }
+  root.add(createPavement());
   for (let t = -46; t < 48; t += 5)
     if (Math.abs(t) > 11) {
       box(root, [0.12, 0.016, 2.5], [0, 0.049, t], "#f4edd8");

@@ -7,6 +7,7 @@ import {
   STOP_LINE_ENTRY,
   STOP_LINE_THICKNESS,
   STOP_APPROACH_DISTANCE,
+  isOnCarriageway,
 } from "./junction";
 
 export type Stage = "observe" | "drive" | "review";
@@ -126,7 +127,7 @@ export function stepSession(s: Session, input: Controls, dt: number): void {
   }
   if (s.player.speed * 3.6 > 50.5)
     record(s, "speed", "Túllépted az 50 km/h sebességhatárt.");
-  if (points.some((p) => Math.abs(p.x) > 4 && Math.abs(p.z) > 4)) {
+  if (points.some((p) => !isOnCarriageway(p.x, p.z))) {
     record(s, "lane", "Elhagytad az úttestet. Próbáld meg kisebb sebességgel.");
     s.stage = "review";
   } else if (points.some((p) => p.x < 0 && Math.abs(p.z) > 5)) {
