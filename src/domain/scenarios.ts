@@ -1,4 +1,4 @@
-export type ScenarioId = "priority" | "stop" | "signals";
+export type ScenarioId = "priority" | "stop" | "signals" | "left-turn";
 export interface Scenario {
   id: ScenarioId;
   number: string;
@@ -14,6 +14,7 @@ export interface Scenario {
 }
 export const RULE_SOURCE = "https://njt.jog.gov.hu/jogszabaly/1975-1-20-24";
 export const scenarios: readonly Scenario[] = [
+  // Each lesson describes only the participants actually present in its scene.
   {
     id: "priority",
     number: "01",
@@ -81,6 +82,30 @@ export const scenarios: readonly Scenario[] = [
       "Állj meg a piros jelzésnél.",
       "Várd meg a zöldet és a szabad utat.",
       "Haladj át egyenesen a célkapuig.",
+    ],
+  },
+  {
+    id: "left-turn",
+    number: "04",
+    title: "Balra, körültekintően",
+    subtitle: "Kanyarodás és szembejövő forgalom",
+    description:
+      "Balra kanyarodsz a jelzés nélküli kereszteződésben. A szemből érkező kék autó egyenesen halad. Más jármű és gyalogos nincs a helyszínen.",
+    question: "Hogyan készíted elő a balra kanyarodást?",
+    choices: [
+      "Bekapcsolom a bal irányjelzőt, és elsőbbséget adok a szemből egyenesen haladónak.",
+      "Az irányjelző bekapcsolásával elsőbbséget kapok.",
+      "Rögtön balra fordulok, mert a másik autó nem jobbról érkezik.",
+    ],
+    answer: 0,
+    explanation:
+      "Időben jelezd a balra kanyarodást, és tartsd fenn a jelzést a manőver végéig. Adj elsőbbséget a szemből egyenesen haladó autónak. Nagy ívben fordulj, majd a menetirány szerinti jobb oldalon folytasd.",
+    rule: "KRESZ 29. § (2); 31. § (1), (3), (5) c) ca)",
+    objectives: [
+      "Kapcsold be időben a bal irányjelzőt (Q vagy a képernyőgomb).",
+      "Lassíts, és engedd el a szemből érkező kék autót.",
+      "Kis sebességgel, nagy ívben fordulj balra (A / ←).",
+      "Egyenesítsd ki a kormányt, és a jobb oldali sávban haladj a célkapuig.",
     ],
   },
 ];

@@ -1,5 +1,6 @@
 import type { Session } from "../domain/session";
 import { corners } from "../domain/vehicle";
+import { conflictState } from "../domain/movements";
 import {
   STOP_LINE,
   STOP_LINE_THICKNESS,
@@ -25,4 +26,19 @@ export function stopFeedback(session: Session): string {
   if (session.player.speed === 0 && distance > STOP_APPROACH_DISTANCE)
     return `Még ${distance.toFixed(1)} m a vonal · Gurulj közelebb, majd állj meg újra.`;
   return `STOP · ${distance.toFixed(1)} m a vonalig · Tartsd a féket a teljes megállásig.`;
+}
+
+export function turnFeedback(session: Session): string {
+  if (session.turn.finished)
+    return "Kanyar kész · Kapcsold ki az indexet, és haladj a célkapuig.";
+  if (session.indicator !== -1)
+    return "Balra kanyarodás · Kapcsold be a bal indexet: Q vagy a bal index gomb.";
+  const conflict = conflictState(
+    session.scenario,
+    session.player,
+    session.traffic,
+  );
+  if (conflict.mustYield)
+    return "Bal index bekapcsolva · Lassíts, engedd el a szemből érkezőt. Ne fordulj a sávjába.";
+  return "Szabad a kanyar útja · Kis sebességgel, nagy ívben fordulj balra (A / ←). Tartsd az indexet.";
 }

@@ -7,6 +7,13 @@ import { prioritySign, stopSign, trafficLight } from "./signage";
 import type { ScenarioId } from "../domain/scenarios";
 import type { Signal } from "../domain/signals";
 import { STOP_LINE, STOP_LINE_THICKNESS } from "../domain/junction";
+import {
+  goalPose,
+  movementsFor,
+  poseOnPath,
+  TURN_EXIT,
+} from "../domain/movements";
+import type { MovementId } from "../domain/movements";
 
 function tree(parent: THREE.Object3D, x: number, z: number, scale = 1) {
   const g = new THREE.Group();
@@ -231,42 +238,61 @@ export function createTown(): Town {
     opacity: 0.45,
     depthWrite: false,
   });
-  for (let z = 22; z > -20; z -= 3) {
-    const shape = new THREE.Shape();
-    shape.moveTo(-0.35, -0.2);
-    shape.lineTo(0, 0.25);
-    shape.lineTo(0.35, -0.2);
-    shape.lineTo(0.35, -0.4);
-    shape.lineTo(0, 0);
-    shape.lineTo(-0.35, -0.4);
-    shape.closePath();
-    const m = mesh(
-      route,
-      new THREE.ShapeGeometry(shape),
-      routeMat,
-      1.85,
-      0.075,
-      z,
-    );
-    m.rotation.x = -Math.PI / 2;
+  function routeGuide(path: MovementId) {
+    const group = new THREE.Group();
+    group.name = `route-${path}`;
+    route.add(group);
+    const end = path === "south-west" ? TURN_EXIT + 16 : 46;
+    for (let distance = 4; distance < end; distance += 3) {
+      const pose = poseOnPath(path, distance);
+      const shape = new THREE.Shape();
+      shape.moveTo(-0.35, -0.2);
+      shape.lineTo(0, 0.25);
+      shape.lineTo(0.35, -0.2);
+      shape.lineTo(0.35, -0.4);
+      shape.lineTo(0, 0);
+      shape.lineTo(-0.35, -0.4);
+      shape.closePath();
+      const m = mesh(
+        group,
+        new THREE.ShapeGeometry(shape),
+        routeMat,
+        pose.x,
+        0.075,
+        pose.z,
+      );
+      m.rotation.set(-Math.PI / 2, 0, 0);
+      m.rotateOnWorldAxis(new THREE.Vector3(0, 1, 0), -pose.yaw);
+    }
+    return group;
   }
+  const straightGuide = routeGuide("south-north");
+  const turnGuide = routeGuide("south-west");
+  const goalGroup = new THREE.Group();
+  goalGroup.name = "lesson-goal";
+  root.add(goalGroup);
   const goal = new THREE.MeshBasicMaterial({
     color: "#c8e79f",
     transparent: true,
     opacity: 0.5,
   });
-  for (const x of [0.25, 3.65])
-    cylinder(root, 0.05, 3, [x, 1.5, -22], "#adc689");
-  box(root, [3.4, 0.05, 1], [1.95, 0.08, -22], goal);
-  plaque(root, "CÉL", 1.3, 0.45, [1.95, 3, -22], "#34594d", "#f1f4de");
+  for (const x of [-1.7, 1.7])
+    cylinder(goalGroup, 0.05, 3, [x, 1.5, 0], "#adc689");
+  box(goalGroup, [3.4, 0.05, 1], [0, 0.08, 0], goal);
+  plaque(goalGroup, "CÉL", 1.3, 0.45, [0, 3, 0], "#34594d", "#f1f4de");
   return {
     root,
     route,
     setScenario(id) {
       stopSigns.visible = id === "stop";
       lightGroup.visible = id === "signals";
-      stopLines.visible = id !== "priority";
+      stopLines.visible = id === "stop" || id === "signals";
       ewLines.visible = id === "signals";
+      straightGuide.visible = id !== "left-turn";
+      turnGuide.visible = id === "left-turn";
+      const goal = goalPose(movementsFor(id).player);
+      goalGroup.position.set(goal.x, 0, goal.z);
+      goalGroup.rotation.y = -goal.yaw;
     },
     setSignals(s) {
       lights.forEach((l, i) => l.set(i < 2 ? s.ns : s.ew));

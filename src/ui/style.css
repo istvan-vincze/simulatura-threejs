@@ -644,7 +644,7 @@ kbd {
 .drive-notice {
   display: none;
   position: absolute;
-  bottom: 142px;
+  bottom: 195px;
   left: 50%;
   transform: translateX(-50%);
   padding: 12px 19px;
@@ -737,6 +737,31 @@ kbd {
   color: #849078;
   line-height: 1.8;
   padding: 14px 0;
+}
+.indicator-controls {
+  position: absolute;
+  right: 24px;
+  bottom: 145px;
+  display: flex;
+  gap: 6px;
+}
+.indicator-controls button {
+  padding: 8px 10px;
+  border: 1px solid #d8dfcf;
+  border-radius: 7px;
+  background: #f7f9eef2;
+  color: #52634c;
+  font-size: 11px;
+  touch-action: manipulation;
+}
+.indicator-controls button.active {
+  background: #e9bb62;
+  border-color: #a8792c;
+  color: #443519;
+}
+.indicator-controls kbd {
+  font-size: 9px;
+  margin: 0 3px;
 }
 .touch-controls {
   display: none;
@@ -890,7 +915,8 @@ dialog dd {
     padding: 0 14px 18px;
   }
   .lesson-navigation nav {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 3px;
   }
   .lesson-button {
@@ -978,7 +1004,11 @@ dialog dd {
     font-size: 6px;
   }
   .drive-notice {
-    bottom: 178px;
+    bottom: 222px;
+  }
+  .indicator-controls {
+    right: 15px;
+    bottom: 183px;
   }
   .touch-controls {
     position: absolute;

@@ -84,8 +84,9 @@ export function createScene(container: HTMLElement) {
       if (mode === "overview") orbit.update();
       else {
         const { x, z, yaw } = s.player;
-        const distance = mode === "follow" ? 10 : -0.15,
-          height = mode === "follow" ? 5.7 : 1.48;
+        const distance = mode === "follow" ? 13 : -0.15,
+          height = mode === "follow" ? 6.8 : 1.48,
+          lookAhead = mode === "follow" ? 3.5 : 12;
         desired.set(
           x - Math.sin(yaw) * distance,
           height,
@@ -96,9 +97,10 @@ export function createScene(container: HTMLElement) {
           mode === "driver" ? 1 : 1 - Math.exp(-7 * dt),
         );
         target.set(
-          x + Math.sin(yaw) * 12,
+          // Keep the rear lights above the dashboard while retaining the road ahead.
+          x + Math.sin(yaw) * lookAhead,
           mode === "driver" ? 1.4 : 0.8,
-          z - Math.cos(yaw) * 12,
+          z - Math.cos(yaw) * lookAhead,
         );
         camera.lookAt(target);
       }

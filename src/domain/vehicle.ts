@@ -11,6 +11,7 @@ export interface Controls {
   throttle: number;
   brake: number;
   steer: number;
+  indicator?: -1 | 0 | 1;
 }
 export const NEUTRAL: Controls = { throttle: 0, brake: 0, steer: 0 };
 export const CAR = { length: 4.4, width: 1.82, wheelbase: 2.65 };

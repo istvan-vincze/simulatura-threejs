@@ -3,7 +3,7 @@ import "@fontsource-variable/manrope";
 import "./ui/style.css";
 import { mountInterface, renderLesson } from "./ui/interface";
 import { createInput } from "./ui/input";
-import { speedLabel, stopFeedback } from "./ui/driving-feedback";
+import { speedLabel, stopFeedback, turnFeedback } from "./ui/driving-feedback";
 import { scenarios } from "./domain/scenarios";
 import type { ScenarioId } from "./domain/scenarios";
 import { createSession, passed, stepSession } from "./domain/session";
@@ -15,8 +15,8 @@ mountInterface();
 let session = createSession("priority");
 let choice: number | null = null;
 let camera: CameraMode = "overview";
-let indicator = 0,
-  routeVisible = true,
+let indicator: -1 | 0 | 1 = 0;
+let routeVisible = true,
   panelKey = "",
   accumulator = 0;
 let completed = new Set<string>();
@@ -97,6 +97,10 @@ document.addEventListener("click", (event) => {
     "button",
   );
   if (!button) return;
+  if (button.dataset.indicator) {
+    const direction = Number(button.dataset.indicator) as -1 | 1;
+    indicator = indicator === direction ? 0 : direction;
+  }
   if (button.dataset.scenario) reset(button.dataset.scenario as ScenarioId);
   if (button.dataset.camera) setCamera(button.dataset.camera as CameraMode);
   if (button.dataset.answer !== undefined) {
@@ -154,7 +158,10 @@ function updatePanel() {
       progressSaved = false;
     }
   }
-  const key = `${session.scenario}:${session.stage}:${session.events.length}:${choice}:${completed.size}`;
+  const eventsKey = session.events
+    .map((e) => `${e.code}:${e.severity}`)
+    .join(",");
+  const key = `${session.scenario}:${session.stage}:${eventsKey}:${choice}:${completed.size}`;
   if (key !== panelKey) {
     renderLesson(
       session,
@@ -186,7 +193,16 @@ function updateDashboard() {
       ? "Megfigyelés"
       : session.stage === "review"
         ? "Értékelés"
-        : "Egyenesen tovább";
+        : session.scenario === "left-turn"
+          ? "Balra kanyarodás"
+          : "Egyenesen tovább";
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-indicator]")
+    .forEach((button) => {
+      const active = Number(button.dataset.indicator) === indicator;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
   pauseButton.disabled = session.stage !== "drive";
   pauseButton.classList.toggle("active", session.paused);
   pauseButton.setAttribute(
@@ -208,6 +224,7 @@ function updateDashboard() {
               ? "Sárga jelzés · Állj meg, ha biztonságosan megteheted."
               : "Piros jelzés · Állj meg a vonal előtt.";
     } else if (session.scenario === "stop") message = stopFeedback(session);
+    else if (session.scenario === "left-turn") message = turnFeedback(session);
   }
   if (notice.textContent !== message) notice.textContent = message;
   notice.classList.toggle("visible", !!message);
@@ -216,7 +233,7 @@ let previous = performance.now();
 function frame(now: number) {
   const dt = Math.min((now - previous) / 1000, 0.1);
   previous = now;
-  const controls = input.read();
+  const controls = { ...input.read(), indicator };
   if (session.stage === "drive" && !session.paused) {
     accumulator += dt;
     while (accumulator >= 1 / 60) {
