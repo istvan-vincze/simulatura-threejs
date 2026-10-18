@@ -33,13 +33,19 @@ try {
   /* Storage may be unavailable; practice still works. */
 }
 const viewport = document.querySelector<HTMLElement>("#viewport")!;
-let world: ReturnType<typeof createScene> | undefined;
+let world: Awaited<ReturnType<typeof createScene>> | undefined;
+const loading = document.createElement("div");
+loading.className = "render-error";
+loading.setAttribute("role", "status");
+loading.textContent = "A gyakorlópálya betöltése…";
+viewport.append(loading);
 try {
-  world = createScene(viewport);
+  world = await createScene(viewport);
+  loading.remove();
 } catch (error) {
   console.error("Unable to start 3D renderer", error);
   viewport.innerHTML =
-    '<div class="render-error"><h2>A 3D nézet nem indult el.</h2><p>A gyakorlópályához WebGL 2 támogatás szükséges. Kapcsold be a böngésző hardveres gyorsítását, majd töltsd újra az oldalt.</p></div>';
+    '<div class="render-error"><h2>A 3D nézet nem indult el.</h2><p>Töltsd újra az oldalt. Ha a hiba megmarad, ellenőrizd a kapcsolatot és a böngésző hardveres gyorsítását. A gyakorlópályához WebGL 2 szükséges.</p></div>';
 }
 const help = document.querySelector<HTMLDialogElement>("#help-dialog")!;
 function setCamera(mode: CameraMode) {

@@ -6,14 +6,21 @@ import { createCockpit, DRIVER_FOV, DRIVER_PITCH } from "./cockpit";
 import type { Session } from "../domain/session";
 import { signalsAt } from "../domain/signals";
 export type CameraMode = "overview" | "follow" | "driver";
-export function createScene(container: HTMLElement) {
+export async function createScene(container: HTMLElement) {
+  const cockpit = await createCockpit();
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#dce2d2");
   scene.fog = new THREE.Fog("#dce2d2", 75, 160);
-  const renderer = new THREE.WebGLRenderer({
-    antialias: true,
-    powerPreference: "high-performance",
-  });
+  let renderer: THREE.WebGLRenderer;
+  try {
+    renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: "high-performance",
+    });
+  } catch (error) {
+    cockpit.dispose();
+    throw error;
+  }
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -50,7 +57,6 @@ export function createScene(container: HTMLElement) {
   const player = createCar("#c66a43", true),
     traffic = createCar("#537f98");
   scene.add(player.root, traffic.root);
-  const cockpit = createCockpit();
   scene.add(cockpit.root);
   let mode: CameraMode = "overview";
   let lookYaw = 0,

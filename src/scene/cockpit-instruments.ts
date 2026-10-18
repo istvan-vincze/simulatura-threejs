@@ -1,15 +1,7 @@
 import * as THREE from "three";
-import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 
 export function createInstruments() {
   const root = new THREE.Group();
-  root.position.set(-0.38, 1.145, -0.84);
-  root.rotation.x = -0.12;
-  const shell = new THREE.Mesh(
-    new RoundedBoxGeometry(0.57, 0.28, 0.12, 3, 0.045),
-    new THREE.MeshStandardMaterial({ color: "#191f24", roughness: 0.85 }),
-  );
-  root.add(shell);
   const canvas = document.createElement("canvas");
   canvas.width = 1024;
   canvas.height = 448;
@@ -17,10 +9,11 @@ export function createInstruments() {
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   const screen = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.51, 0.223),
+    new THREE.PlaneGeometry(0.49, 0.214),
     new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }),
   );
-  screen.position.z = 0.062;
+  screen.name = "instrument-screen";
+  screen.position.z = 0.022;
   root.add(screen);
   let previous = "";
   function update(

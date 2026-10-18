@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { createScene } from "../src/scene/scene";
 import { createSession } from "../src/domain/session";
 import { DRIVER_FOV } from "../src/scene/cockpit";
+import { loadLocalCockpit } from "./cockpit-asset";
 
 const render = vi.hoisted(() => vi.fn());
 vi.mock("three", async (importOriginal) => {
@@ -21,13 +22,14 @@ vi.mock("three", async (importOriginal) => {
   };
 });
 
-it("switches between exterior and cockpit cameras, supports looking around, and recenters", () => {
+it("switches between exterior and cockpit cameras, supports looking around, and recenters", async () => {
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
     new Proxy({}, { get: () => () => {} }) as CanvasRenderingContext2D,
   );
   const container = document.createElement("div");
   document.body.append(container);
-  const world = createScene(container);
+  loadLocalCockpit();
+  const world = await createScene(container);
   const session = createSession("left-turn");
   session.player.yaw = -Math.PI / 2;
   const draw = () => world.render(session, false, -1, 1 / 60);

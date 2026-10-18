@@ -8,6 +8,7 @@ import {
   DRIVER_PITCH,
 } from "../src/scene/cockpit";
 import { createInstruments } from "../src/scene/cockpit-instruments";
+import { loadLocalCockpit } from "./cockpit-asset";
 
 function canvasContext() {
   const fillText = vi.fn();
@@ -26,9 +27,10 @@ function canvasContext() {
 }
 afterEach(() => vi.restoreAllMocks());
 
-it("attaches the left-seat eye and wheel to the vehicle and leaves the forward sightline clear", () => {
+it("attaches the left-seat eye and wheel to the vehicle and leaves the forward sightline clear", async () => {
   canvasContext();
-  const cockpit = createCockpit();
+  loadLocalCockpit();
+  const cockpit = await createCockpit();
   for (const yaw of [0, -Math.PI / 2, Math.PI / 2]) {
     cockpit.update(
       { x: 8, z: 12, yaw, steering: -0.3, speed: 2 },
@@ -66,6 +68,18 @@ it("attaches the left-seat eye and wheel to the vehicle and leaves the forward s
   cockpit.eye.getWorldPosition(camera.position);
   camera.rotation.x = DRIVER_PITCH;
   camera.updateMatrixWorld(true);
+  // Both indicator arrows remain visible above the rim from the driving eye.
+  const screen = cockpit.root.getObjectByName("instrument-screen")!;
+  for (const x of [0.033, 0.147]) {
+    const arrow = screen.localToWorld(new THREE.Vector3(x, 0.082, 0));
+    const hits = new THREE.Raycaster(
+      camera.position,
+      arrow.sub(camera.position).normalize(),
+      0.025,
+      3,
+    ).intersectObject(cockpit.root);
+    expect(hits[0]?.object).toBe(screen);
+  }
   // The entire wheel stays in the default frame, without relying on HUD overlays.
   const bounds = new THREE.Box3().setFromObject(cockpit.wheel);
   for (const x of [bounds.min.x, bounds.max.x])
@@ -76,8 +90,17 @@ it("attaches the left-seat eye and wheel to the vehicle and leaves the forward s
         expect(Math.abs(p.y)).toBeLessThan(1);
       }
   const dispose = vi.spyOn(cockpit.mirror.getRenderTarget(), "dispose");
+  let leather: THREE.MeshStandardMaterial | undefined;
+  cockpit.root.traverse((object) => {
+    if (object instanceof THREE.Mesh && object.material.name === "Leather")
+      leather = object.material;
+  });
+  const disposeGrain = vi.spyOn(leather!.bumpMap!, "dispose");
+  const disposeEnvironment = vi.spyOn(leather!.envMap!, "dispose");
   cockpit.dispose();
   expect(dispose).toHaveBeenCalledOnce();
+  expect(disposeGrain).toHaveBeenCalledOnce();
+  expect(disposeEnvironment).toHaveBeenCalledOnce();
 });
 
 it("updates actual speed, gear, route and blink phase without redrawing unchanged instruments", () => {
