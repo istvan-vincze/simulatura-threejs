@@ -7,6 +7,7 @@ const scene = vi.hoisted(() => ({
   render: vi.fn(),
   setCamera: vi.fn(),
   setRoute: vi.fn(),
+  centerLook: vi.fn(),
 }));
 vi.mock("../src/scene/scene", () => ({ createScene: () => scene }));
 
@@ -154,6 +155,16 @@ it("tracks all four lessons through application controls, including blocked stor
   expect(document.querySelector('[data-status="left-turn"]')!.textContent).toBe(
     "✓",
   );
+  click('[data-camera="driver"]');
+  expect(
+    document.querySelector(".simulation")!.classList.contains("driver-view"),
+  ).toBe(true);
+  click("#center-look");
+  expect(scene.centerLook).toHaveBeenCalledOnce();
+  click('[data-camera="follow"]');
+  expect(
+    document.querySelector(".simulation")!.classList.contains("driver-view"),
+  ).toBe(false);
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });

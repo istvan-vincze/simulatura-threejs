@@ -487,6 +487,33 @@ h1 {
 .scene-tools button {
   background: #f9faf0e6;
 }
+#center-look {
+  display: none;
+}
+.driver-view #center-look {
+  display: inline-flex;
+}
+.driver-view .dashboard,
+.driver-view .legend {
+  display: none;
+}
+.driver-view .indicator-controls {
+  bottom: 30px;
+}
+.driver-view .drive-notice {
+  bottom: 28px;
+  left: 24px;
+  transform: none;
+  max-width: 45%;
+  padding: 8px 12px;
+  font-size: 10px;
+}
+.driver-view #viewport canvas {
+  cursor: grab;
+}
+.driver-view #viewport canvas:active {
+  cursor: grabbing;
+}
 .scene-hint {
   position: absolute;
   left: 27px;
@@ -1036,6 +1063,17 @@ dialog dd {
   }
   .weather {
     font-size: 20px;
+  }
+  .driver-view .touch-controls {
+    bottom: 35px;
+  }
+  .driver-view .indicator-controls {
+    bottom: 86px;
+  }
+  .driver-view .drive-notice {
+    bottom: 128px;
+    left: 15px;
+    max-width: calc(100% - 30px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

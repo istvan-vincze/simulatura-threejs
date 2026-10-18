@@ -23,7 +23,11 @@ Four junction exercises: right-hand priority, STOP and priority, traffic signals
 
 The original procedural models include a learner hatchback with a sculpted body, glazing, mirrors, wheels, brake lights and indicators; signals with separate lenses; stop/priority signs; road markings; sidewalks; trees; and town buildings. They use real metre dimensions and do not require downloaded model assets. The setting is fictional, not a reconstruction of a Budapest location.
 
+**Vezetőülés** uses a separate 3D cockpit with a left-seat eye position, modeled dashboard, steering wheel, vents, console, doors, seats and windscreen pillars. The wheel follows steering input. Instruments display actual speed, drive/park state, the lesson direction and synchronized indicator flashes. A planar rear-view mirror reflects the scene behind the car. The exterior body and regular speed HUD are hidden in this mode; switching cameras restores them.
+
 Controls: W/↑ accelerator, S/↓/Space brake, A/D/←/→ steering, Q/E indicators, C camera, P pause, R reset. Clickable indicator buttons work at every screen size; small-screen buttons also provide driving controls. Indicators toggle and remain active until switched off. Opening help, changing browser tabs, or losing window focus pauses a drive. Resume with P or the pause button. There is no automatic reverse or manual gearbox in this chapter.
+
+In the driver view, drag the scene with the mouse or a finger to look around. Double-click or use the **Nézz előre** camera button to recenter. Looking around changes the camera, not the steering. The normal follow view retains its wider framing.
 
 ## Structure
 
@@ -38,6 +42,8 @@ Controls: W/↑ accelerator, S/↓/Space brake, A/D/←/→ steering, Q/E indica
 ## Validation and boundaries
 
 Tests cover successful runs, priority violations, stop location, rolling stops, signal interlocking, red/red-amber entry, amber clearance, collisions, braking, pause, turn signaling, wrong exits, and wrong outbound lanes. An application-level DOM test drives all four lessons through actual controls with the renderer mocked, including saving the left-turn result. Production compilation is checked. The user owns browser/visual verification for this iteration; no browser test was run.
+
+Cockpit checks cover eye placement as the car turns, clear forward sightlines, wheel framing, steering animation, instrument updates and blink timing, camera switching, pointer looking and recentering, and mirror resource disposal. An isolated SVG preview checks the modeled interior's layout; it does not verify WebGL lighting, canvas textures or live reflections. Check those in the browser, including mirror performance on the target device.
 
 This is a working first chapter, not a complete KRESZ simulator or certified exam product. Traffic consists of one deterministic crossing or oncoming car. Shared lane paths define traffic motion, guide arrows, conflict timing and goal placement; the learner steers freely. No pedestrians, cyclists, trams, emergency vehicles, right-turn lessons, roundabouts, rail crossings, weather physics, scenario editor, or replay are implemented yet. The driving model is kinematic, not a tyre/suspension physics simulation. See the rule documentation for evaluator tolerances.
 

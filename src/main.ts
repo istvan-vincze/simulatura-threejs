@@ -45,6 +45,9 @@ const help = document.querySelector<HTMLDialogElement>("#help-dialog")!;
 function setCamera(mode: CameraMode) {
   camera = mode;
   world?.setCamera(mode);
+  document
+    .querySelector(".simulation")!
+    .classList.toggle("driver-view", mode === "driver");
   document.querySelectorAll<HTMLButtonElement>("[data-camera]").forEach((b) => {
     b.classList.toggle("active", b.dataset.camera === mode);
     b.setAttribute("aria-pressed", String(b.dataset.camera === mode));
@@ -54,7 +57,7 @@ function setCamera(mode: CameraMode) {
       ? "Húzd az egeret a körülnézéshez · Görgess a nagyításhoz"
       : mode === "follow"
         ? "Kövesd a tanulóautót · C: kameraváltás"
-        : "Nézz előre · C: kameraváltás";
+        : "Húzd a nézetet a körülnézéshez · Dupla kattintás: előre";
 }
 function reset(id: ScenarioId = session.scenario) {
   session = createSession(id);
@@ -103,6 +106,7 @@ document.addEventListener("click", (event) => {
   }
   if (button.dataset.scenario) reset(button.dataset.scenario as ScenarioId);
   if (button.dataset.camera) setCamera(button.dataset.camera as CameraMode);
+  if (button.id === "center-look") world?.centerLook();
   if (button.dataset.answer !== undefined) {
     choice = Number(button.dataset.answer);
     updatePanel();
