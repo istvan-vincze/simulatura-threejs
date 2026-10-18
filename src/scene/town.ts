@@ -116,7 +116,7 @@ function streetLamp(parent: THREE.Object3D, x: number, z: number) {
 }
 export interface Town {
   root: THREE.Group;
-  setScenario: (id: ScenarioId) => void;
+  setScenario: (id: ScenarioId, freeRoam?: boolean) => void;
   setSignals: (signals: { ns: Signal; ew: Signal }) => void;
   route: THREE.Group;
 }
@@ -283,13 +283,14 @@ export function createTown(): Town {
   return {
     root,
     route,
-    setScenario(id) {
+    setScenario(id, freeRoam = false) {
       stopSigns.visible = id === "stop";
       lightGroup.visible = id === "signals";
       stopLines.visible = id === "stop" || id === "signals";
       ewLines.visible = id === "signals";
-      straightGuide.visible = id !== "left-turn";
-      turnGuide.visible = id === "left-turn";
+      straightGuide.visible = !freeRoam && id !== "left-turn";
+      turnGuide.visible = !freeRoam && id === "left-turn";
+      goalGroup.visible = !freeRoam;
       const goal = goalPose(movementsFor(id).player);
       goalGroup.position.set(goal.x, 0, goal.z);
       goalGroup.rotation.y = -goal.yaw;

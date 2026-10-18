@@ -31,6 +31,31 @@ The signal order is green → amber → red → red+amber → green. Cross direc
 - Crosswalks are modeled, but these lessons contain no pedestrians; pedestrian priority has not yet been evaluated.
 - The goal is reached when the vehicle's rear has cleared the goal strip. For the left turn, the goal is westbound and the car must have finished its turn and be aligned within 0.3 radians of the exit direction. Errors remain in the run even if the driver later recovers.
 
+## Continuous evaluation in free driving
+
+The authored practice junction uses `driving-evaluator.ts`, independently of lesson questions, target routes and completion. It accepts consecutive vehicle observations, actual traffic, junction layout and indicator input. Events contain a stable sequence number, simulated time, position, approach and provision reference. Four approach directions share the same geometry-based checks. Each visit has its own stop, line-crossing and turning state; exiting or reversing back behind the line rearms the checks. Existing lesson evaluators remain unchanged regression cases.
+
+- STOP applies to the north/south approaches only in the STOP layout. The same stopping tolerance used in lessons applies; a rolling stop is rejected. Retreating away from the line clears the remembered stop.
+- Signals use the correct north/south or east/west phase for the observed approach. The existing amber stopping-distance approximation applies. Reverse gear supports maneuvering but does not yet implement the complete legal rules for reversing.
+- Priority first establishes who must yield: traffic from the right at equal priority, north/south approaches yielding to the east/west priority road in the STOP layout, and left turns yielding to oncoming straight traffic. A three-second prediction samples actual speed and steering every 0.15 seconds to detect conflicting footprints. This is a local training approximation, not an exhaustive priority solver. Green also requires yielding to conflicting traffic still clearing the junction.
+- Turn detection uses actual heading change of 0.2 radians near the junction. Indication must precede it by one simulated second and continue until the vehicle has cleared the junction and aligned with its exit. Those are coaching thresholds, not statutory timing or angle requirements. Lane changes, U-turn-specific rules and precise pre-turn positioning are not comprehensively evaluated.
+- Speed uses the existing 0.5 km/h numerical tolerance. Wrong-lane checks compare the footprint to the road centerline outside the junction, with 0.12 m numerical tolerance. A violation episode rearms after one simulated second without that condition, avoiding repeated frame-level alerts.
+- Curbs and vehicle collisions are evaluated before blocking the attempted movement. The drive continues; the player can reverse or recover to the start. Map edges stop movement without inventing a traffic-law violation. Recovery preserves the log, while a new drive clears it. The most recent 100 events and total count are kept in memory, not browser storage.
+
+The traffic stream is one east-to-west car with repeating arrivals. It respects signal stops, yields to conflicting priority traffic and avoids spawning near the learner. Pedestrian priority, following-distance grading, parking, trams, bicycles, additional road types and many other KRESZ obligations remain outside the modeled coverage. A clean log is not proof of legal or exam-ready driving.
+
+## Imported Zugló map
+
+`map-evaluator.ts` uses the same evidence log while observing the imported graph in world coordinates. It has no lesson goal or prescribed player route. The [offline source and derivation](../data/osm/README.md) distinguish OSM data, estimated geometry and unverified controls.
+
+- Speed limits come from each road's OSM tag (mostly 30 km/h), with the built-up-area default for untagged roads and the existing 0.5 km/h numerical tolerance. Displayed limits and evaluation use the same road lookup.
+- One-way direction and right-hand travel use the nearest oriented road segment. Footprints are checked outside an 11 m region around junctions and sharp centre-line bends, where comparing against just one approach would create false positives. This deliberately leaves detailed intersection lane positioning ungraded.
+- Indicator checks begin on a recognized junction approach. An actual heading change greater than 0.25 radians within 10 m of the junction triggers a turn; the same one-second advance indication approximation applies. Clearing the junction before cancelling does not produce a late-indication error. These distances/angles are coaching approximations, not law.
+- Imported node-based turn restrictions are checked when an entered junction is exited. They are displayed in the scene. Broader sign precedence, lane-specific turns, via-way restrictions, U-turn rules and legal route planning are not yet covered comprehensively.
+- Road departure uses the exact polygons rendered as asphalt, checking the vehicle corners, edge midpoints and centre. End barriers stop the car without a traffic-law penalty. Collision and recovery behavior share the practice mode's evidence semantics.
+- The NPC follows a closed directed circuit that respects imported one-way and turn restrictions. It yields conservatively to conflicting learner movement. Unknown priority is not inferred from its behavior.
+- The source extract has one mapped give-way node on these selected streets, rendered in its tagged direction, and no mapped STOP or signal nodes. Sparse tags do not establish the full priority system. Actual local controls still need verification; **this map does not grade STOP, signals or junction priority**. Use **Gyakorlótér** for those exercises. The real map is not ready for exam scoring.
+
 ## Updating the rules
 
 1. Open the unversioned official source and verify its effective date; check whether a replacement regulation has actually entered into force.

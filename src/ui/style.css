@@ -193,6 +193,65 @@ h1 {
   background: #eaf0df;
   border-color: #dbe4ce;
 }
+.free-drive-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 20px 20px;
+  padding: 14px 12px;
+  border: 1px solid #dbe4ce;
+  border-radius: 9px;
+  background: #f0f3e9;
+  text-align: left;
+}
+.free-drive-button.active {
+  background: #dfe9d0;
+}
+.free-drive-button svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.free-drive-button strong {
+  display: block;
+  font-size: 12px;
+}
+.free-drive-button small {
+  display: block;
+  font-size: 10px;
+  margin-top: 5px;
+  color: #6e7f61;
+}
+.free-layouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 20px 0;
+}
+.free-layouts .section-label {
+  flex-basis: 100%;
+  padding: 0;
+}
+.free-layouts button {
+  flex: 1;
+  padding: 9px 4px;
+  border-radius: 6px;
+  border: 1px solid #dbe4ce;
+  background: #fafaf5;
+  font-size: 11px;
+}
+.free-layouts button.active {
+  background: #dfe9d0;
+}
+.violation-log small {
+  display: block;
+  color: #8b7361;
+  margin-top: 5px;
+  font-size: 10px;
+}
+[hidden] {
+  display: none !important;
+}
 .lesson-number {
   font-size: 11px;
   color: #969e8d;
@@ -1080,4 +1139,79 @@ dialog dd {
   * {
     transition: none !important;
   }
+}
+
+.map-switch {
+  display: flex;
+  gap: 6px;
+  margin: 16px 0;
+}
+.map-switch button {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.map-switch button.active {
+  background: #e6eddf;
+  border-color: #637e65;
+  color: #314a37;
+}
+.neighbourhood-map {
+  margin: 0 0 18px;
+  border: 1px solid #d8ddcf;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #edf0e5;
+}
+.neighbourhood-map figcaption {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 14px 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #53665b;
+}
+.neighbourhood-map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 230px;
+}
+.map-street {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+#map-speed-limit {
+  border: 3px solid #b95742;
+  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  background: #fffdf2;
+  flex-shrink: 0;
+}
+.map-attribution {
+  display: block;
+  padding: 4px 14px;
+  font-size: 10px;
+  color: #53665b;
+}
+.map-data-note {
+  margin: 0;
+  padding: 4px 14px 12px;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #637267;
 }

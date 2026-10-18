@@ -42,6 +42,13 @@ it("switches guide direction and goal between the left turn and straight lessons
       );
       expect(acrossGate.dot(direction)).toBeCloseTo(0);
     }
+    town.setScenario("signals", true);
+    expect(goal.visible).toBe(false);
+    expect(straight.visible).toBe(false);
+    expect(turn.visible).toBe(false);
+    town.setScenario("priority");
+    expect(goal.visible).toBe(true);
+    expect(straight.visible).toBe(true);
   } finally {
     context.mockRestore();
   }

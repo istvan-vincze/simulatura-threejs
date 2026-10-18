@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { expect, it, vi } from "vitest";
 import type { Session } from "../src/domain/session";
+import type { FreeRoam } from "../src/domain/free-roam";
 import { followTurn } from "./helpers/turn-driver";
 
 const scene = vi.hoisted(() => ({
@@ -165,6 +166,82 @@ it("tracks all four lessons through application controls, including blocked stor
   expect(
     document.querySelector(".simulation")!.classList.contains("driver-view"),
   ).toBe(false);
+
+  // Free driving is entered without a quiz and cannot change lesson progress.
+  const savedProgress = localStorage.getItem("simulatura.progress.v1");
+  const currentFree = () => scene.render.mock.lastCall![0] as FreeRoam;
+  click("#free-roam");
+  step();
+  expect(currentFree().mode).toBe("free");
+  expect(document.querySelector("[data-answer]")).toBeNull();
+  expect(document.querySelector("#finish")).toBeNull();
+  expect(document.querySelector<HTMLButtonElement>("#route")!.hidden).toBe(
+    true,
+  );
+  expect(scene.setRoute).toHaveBeenLastCalledWith(false);
+  expect(currentFree().map?.id).toBe("zuglo-ujvidek-v1");
+  expect(document.querySelector("#neighbourhood-map")).not.toBeNull();
+  expect(document.querySelector(".map-attribution")!.textContent).toContain(
+    "OpenStreetMap",
+  );
+  click("#free-new");
+  step();
+  expect(currentFree().map?.id).toBe("zuglo-ujvidek-v1");
+  click("#free-practice");
+  step();
+  expect(currentFree().map).toBeNull();
+  key("KeyW", true);
+  run(18);
+  key("KeyW", false);
+  expect(currentFree().stage).toBe("drive");
+  expect(currentFree().player.z).toBeLessThan(-35);
+  expect(currentFree().evaluation.events.some((e) => e.code === "signal")).toBe(
+    true,
+  );
+  expect(document.querySelector("#violation-count")!.textContent).toBe(
+    String(currentFree().evaluation.total),
+  );
+  expect(localStorage.getItem("simulatura.progress.v1")).toBe(savedProgress);
+  const count = currentFree().evaluation.total;
+  click('[data-camera="driver"]');
+  click("#direction");
+  step();
+  expect(currentFree().direction).toBe(-1);
+  expect(document.querySelector("#gear")!.textContent).toBe("R");
+  const end = currentFree().player.z;
+  key("KeyW", true);
+  run(1);
+  key("KeyW", false);
+  expect(currentFree().player.z).toBeGreaterThan(end);
+  key("KeyX", true);
+  key("KeyX", false);
+  expect(currentFree().direction).toBe(-1); // Cannot shift while moving.
+  key("KeyR", true);
+  key("KeyR", false);
+  step();
+  expect(currentFree().player.z).toBe(26);
+  expect(currentFree().evaluation.total).toBe(count);
+  expect(currentFree().direction).toBe(1);
+  window.dispatchEvent(new Event("blur"));
+  const pausedTime = currentFree().elapsed;
+  run(1);
+  expect(currentFree().elapsed).toBe(pausedTime);
+  click("#pause");
+  run(1);
+  expect(currentFree().elapsed).toBeGreaterThan(pausedTime);
+  click('[data-layout="stop"]');
+  step();
+  expect(currentFree().scenario).toBe("stop");
+  expect(currentFree().evaluation.total).toBe(0);
+  click('[data-scenario="priority"]');
+  step();
+  expect(current().mode).toBe("lesson");
+  expect(current().stage).toBe("observe");
+  expect(scene.setRoute).toHaveBeenLastCalledWith(true);
+  expect(document.querySelector<HTMLButtonElement>("#direction")!.hidden).toBe(
+    true,
+  );
+  expect(document.querySelector("#progress")!.textContent).toBe("4 / 4");
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });

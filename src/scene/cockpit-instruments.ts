@@ -22,6 +22,7 @@ export function createInstruments() {
     time: number,
     driving: boolean,
     turning: boolean,
+    freeRoam?: { direction: 1 | -1 },
   ) {
     const kmh = speed * 3.6;
     const speedText =
@@ -32,7 +33,13 @@ export function createInstruments() {
           : String(Math.round(kmh));
     const blink = Math.floor(time * 2.4) % 2 === 0;
     const lit = blink ? indicator : 0;
-    const key = `${speedText}:${lit}:${driving}:${turning}`;
+    const gear = !driving ? "P" : freeRoam?.direction === -1 ? "R" : "D";
+    const route = freeRoam
+      ? "SZABAD VEZETÉS"
+      : turning
+        ? "BALRA KANYARODÁS"
+        : "EGYENESEN TOVÁBB";
+    const key = `${speedText}:${lit}:${gear}:${route}`;
     if (key === previous) return;
     previous = key;
     const c = context;
@@ -91,10 +98,10 @@ export function createInstruments() {
     c.fillText("km/h", 675, 248);
     c.fillStyle = "#c2d8b7";
     c.font = "34px Arial";
-    c.fillText(driving ? "D" : "P", 850, 208);
+    c.fillText(gear, 850, 208);
     c.fillStyle = "#8fa79b";
     c.font = "23px Arial";
-    c.fillText(turning ? "BALRA KANYARODÁS" : "EGYENESEN TOVÁBB", 694, 343);
+    c.fillText(route, 694, 343);
     c.fillStyle = "#647b73";
     c.font = "18px Arial";
     c.fillText("SIMULATURA", 286, 408);

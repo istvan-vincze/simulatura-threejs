@@ -24,6 +24,7 @@ import {
 
 export type Stage = "observe" | "drive" | "review";
 export interface Session {
+  mode: "lesson";
   scenario: ScenarioId;
   stage: Stage;
   elapsed: number;
@@ -41,6 +42,7 @@ export interface Session {
 }
 export function createSession(scenario: ScenarioId): Session {
   return {
+    mode: "lesson",
     scenario,
     stage: "observe",
     elapsed: 0,

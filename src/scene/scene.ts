@@ -1,9 +1,10 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { createMapScene } from "./map";
 import { createTown } from "./town";
 import { createCar } from "./car";
 import { createCockpit, DRIVER_FOV, DRIVER_PITCH } from "./cockpit";
-import type { Session } from "../domain/session";
+import type { DrivingSession } from "../domain/free-roam";
 import { signalsAt } from "../domain/signals";
 export type CameraMode = "overview" | "follow" | "driver";
 export async function createScene(container: HTMLElement) {
@@ -44,7 +45,7 @@ export async function createScene(container: HTMLElement) {
   sun.shadow.normalBias = 0.035;
   sun.shadow.bias = -0.00015;
   sun.shadow.radius = 3;
-  scene.add(sun);
+  scene.add(sun, sun.target);
   const camera = new THREE.PerspectiveCamera(43, 1, 0.1, 230);
   const orbit = new OrbitControls(camera, renderer.domElement);
   orbit.enableDamping = true;
@@ -54,6 +55,9 @@ export async function createScene(container: HTMLElement) {
   orbit.maxPolarAngle = Math.PI / 2.2;
   const town = createTown();
   scene.add(town.root);
+  let neighbourhood: ReturnType<typeof createMapScene> | null = null;
+  let lastPosition = { x: 0, z: 0 };
+  let onMap = false;
   const player = createCar("#c66a43", true),
     traffic = createCar("#537f98");
   scene.add(player.root, traffic.root);
@@ -118,8 +122,16 @@ export async function createScene(container: HTMLElement) {
     drag = null;
     centerLook();
     if (mode === "overview") {
-      camera.position.set(37, 40, 46);
-      orbit.target.set(0, 0, 2);
+      camera.position.set(
+        (onMap ? lastPosition.x : 0) + 37,
+        40,
+        (onMap ? lastPosition.z : 0) + 46,
+      );
+      orbit.target.set(
+        onMap ? lastPosition.x : 0,
+        0,
+        onMap ? lastPosition.z : 2,
+      );
       orbit.update();
     }
   }
@@ -141,11 +153,43 @@ export async function createScene(container: HTMLElement) {
     setRoute(visible: boolean) {
       town.route.visible = visible;
     },
-    render(s: Session, braking: boolean, indicator: number, dt: number) {
-      town.setScenario(s.scenario);
+    render(s: DrivingSession, braking: boolean, indicator: number, dt: number) {
+      const map = s.mode === "free" ? s.map : null;
+      if (map && !neighbourhood) {
+        neighbourhood = createMapScene(map);
+        scene.add(neighbourhood.root);
+      }
+      if (onMap !== !!map) {
+        onMap = !!map;
+        camera.far = map ? 1200 : 230;
+        camera.updateProjectionMatrix();
+        orbit.maxDistance = map ? 600 : 85;
+        scene.fog = new THREE.Fog("#dce2d2", map ? 180 : 75, map ? 650 : 160);
+        lastPosition = { x: map ? s.player.x : 0, z: map ? s.player.z : 0 };
+        setCamera(mode);
+        if (map && mode === "follow")
+          camera.position.set(
+            s.player.x - Math.sin(s.player.yaw) * 13,
+            6.8,
+            s.player.z + Math.cos(s.player.yaw) * 13,
+          );
+      }
+      lastPosition = { x: s.player.x, z: s.player.z };
+      town.root.visible = !map;
+      if (neighbourhood) neighbourhood.root.visible = !!map;
+      sun.position.set(s.player.x - 28, 48, s.player.z + 25);
+      sun.target.position.set(s.player.x, 0, s.player.z);
+      town.setScenario(s.scenario, s.mode === "free");
       town.setSignals(signalsAt(s.elapsed));
       const step = s.stage === "drive" && !s.paused ? dt : 0;
-      player.update(s.player, braking, indicator, s.elapsed, step);
+      player.update(
+        s.player,
+        braking,
+        indicator,
+        s.elapsed,
+        step,
+        s.mode === "free" ? s.direction : 1,
+      );
       traffic.update(s.traffic, s.traffic.speed === 0, 0, s.elapsed, step);
       if (mode === "overview") orbit.update();
       else if (mode === "driver") {
@@ -155,6 +199,7 @@ export async function createScene(container: HTMLElement) {
           s.elapsed,
           s.stage === "drive",
           s.scenario === "left-turn",
+          s.mode === "free" ? { direction: s.direction } : undefined,
         );
         cockpit.root.updateMatrixWorld(true);
         cockpit.eye.getWorldPosition(camera.position);
@@ -184,6 +229,7 @@ export async function createScene(container: HTMLElement) {
     dispose() {
       events.abort();
       cockpit.dispose();
+      neighbourhood?.dispose();
       resize.disconnect();
       orbit.dispose();
       renderer.dispose();

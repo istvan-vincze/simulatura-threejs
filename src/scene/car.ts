@@ -11,6 +11,7 @@ export interface CarModel {
     indicator: number,
     time: number,
     dt: number,
+    direction?: 1 | -1,
   ) => void;
 }
 // Original metric hatchback. Sculpted body and glazing, articulated wheels, real light clusters.
@@ -160,7 +161,7 @@ export function createCar(color: string, learner = false): CarModel {
   }
   return {
     root,
-    update(v, braking, indicator, time, dt) {
+    update(v, braking, indicator, time, dt, direction = 1) {
       root.position.set(v.x, 0.04, v.z);
       root.rotation.y = -v.yaw;
       brakeLights.emissiveIntensity = braking ? 2.3 : 0.15;
@@ -173,7 +174,7 @@ export function createCar(color: string, learner = false): CarModel {
       );
       wheels.forEach((w) => {
         if (w.front) w.pivot.rotation.y = -v.steering;
-        w.tire.rotation.x -= (v.speed * dt) / 0.36;
+        w.tire.rotation.x -= (direction * (v.speed * dt)) / 0.36;
       });
     },
   };

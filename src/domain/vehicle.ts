@@ -24,7 +24,12 @@ export const spawnPlayer = (): Vehicle => ({
 });
 
 // Metres, seconds and radians. The visual model never owns vehicle motion.
-export function advanceVehicle(v: Vehicle, input: Controls, dt: number): void {
+export function advanceVehicle(
+  v: Vehicle,
+  input: Controls,
+  dt: number,
+  direction: 1 | -1 = 1,
+): void {
   const steeringLimit = 0.48 / (1 + v.speed * 0.07);
   const desired = input.steer * steeringLimit;
   v.steering += (desired - v.steering) * (1 - Math.exp(-7 * dt));
@@ -32,12 +37,15 @@ export function advanceVehicle(v: Vehicle, input: Controls, dt: number): void {
     input.throttle * 3.8 -
     input.brake * 8 -
     (v.speed > 0 ? 0.28 + v.speed * 0.045 : 0);
-  v.speed = Math.max(0, Math.min(17, v.speed + acceleration * dt));
+  v.speed = Math.max(
+    0,
+    Math.min(direction === -1 ? 3 : 17, v.speed + acceleration * dt),
+  );
   // Finish braking cleanly instead of retaining imperceptible residual motion.
   if (input.brake > 0 && input.throttle === 0 && v.speed < 0.05) v.speed = 0;
-  v.yaw += (v.speed / CAR.wheelbase) * Math.tan(v.steering) * dt;
-  v.x += Math.sin(v.yaw) * v.speed * dt;
-  v.z -= Math.cos(v.yaw) * v.speed * dt;
+  v.yaw += direction * (v.speed / CAR.wheelbase) * Math.tan(v.steering) * dt;
+  v.x += direction * Math.sin(v.yaw) * v.speed * dt;
+  v.z -= direction * Math.cos(v.yaw) * v.speed * dt;
 }
 export function corners(p: Pose): { x: number; z: number }[] {
   return [-1, 1].flatMap((side) =>

@@ -2,6 +2,12 @@
 
 The product leads with a traffic decision, then lets the learner practice it and receive an explanation grounded in the relevant rule. Car handling supports that loop. New content should arrive as complete, reviewable lessons with successful and failed examples.
 
+## Toward an exam with varied routes
+
+The user wants a future exam that gives changing directions and continuously evaluates the resulting driving, rather than a fixed sequence of the existing lessons. Free driving now provides the first route-independent observation/evidence loop: movement continues after violations, and returning to a junction creates a fresh encounter. It now supports the authored junction and an imported connected residential street network around Újvidék tér in Zugló. The real-map traffic controls remain unverified.
+
+The next exam steps are to verify the real map’s controls and lane geometry, generalize traffic beyond its current legal circuit, add seeded route selection and timely turn instructions, then implement an exam lifecycle and reviewed assessment policy. The imported graph and shared carriageway geometry are already present; procedurally generated surroundings preserve the real street layout. Route compliance must be evaluated separately from traffic-law evidence: taking a wrong turn is not automatically a KRESZ violation. Keep the exact seed and driver inputs for replay, and make an exam reproducible even though different runs choose different routes. Extend and validate rule coverage before presenting this as a proper practical exam. Do not assign arbitrary penalty points now.
+
 ## Next slices
 
 1. **Validate this chapter visually and with a driving instructor.** Check sightlines, sign orientation, stop distances, camera comfort, steering feel, mobile control ergonomics and explanations. The current user will perform the browser pass.

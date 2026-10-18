@@ -119,5 +119,8 @@ it("updates actual speed, gear, route and blink phase without redrawing unchange
   expect(fillText).toHaveBeenCalledWith("0", 675, 196);
   expect(fillText).toHaveBeenCalledWith("P", 850, 208);
   expect(fillText).toHaveBeenCalledWith("EGYENESEN TOVÁBB", 694, 343);
+  instruments.update(0, 0, 1, true, false, { direction: -1 });
+  expect(fillText).toHaveBeenCalledWith("R", 850, 208);
+  expect(fillText).toHaveBeenCalledWith("SZABAD VEZETÉS", 694, 343);
   instruments.texture.dispose();
 });

@@ -10,9 +10,21 @@ import { createSession, passed, stepSession } from "./domain/session";
 import { signalsAt } from "./domain/signals";
 import { createScene } from "./scene/scene";
 import type { CameraMode } from "./scene/scene";
+import {
+  createFreeRoam,
+  createZugloFreeRoam,
+  stepFreeRoam,
+  changeDirection,
+  recoverFreeRoam,
+} from "./domain/free-roam";
+import type { DrivingSession } from "./domain/free-roam";
+import type { JunctionLayout } from "./domain/driving-evaluator";
+import { updateMapPosition } from "./ui/map";
+import { streetAt } from "./domain/driving-map";
+import { renderFreeRoam } from "./ui/free-roam";
 
 mountInterface();
-let session = createSession("priority");
+let session: DrivingSession = createSession("priority");
 let choice: number | null = null;
 let camera: CameraMode = "overview";
 let indicator: -1 | 0 | 1 = 0;
@@ -74,6 +86,28 @@ function reset(id: ScenarioId = session.scenario) {
   setCamera("overview");
   updatePanel();
 }
+function startFreeRoam(layout?: JunctionLayout) {
+  if (!world) return;
+  session = layout ? createFreeRoam(layout) : createZugloFreeRoam();
+  choice = null;
+  indicator = 0;
+  accumulator = 0;
+  panelKey = "";
+  input.clear();
+  setCamera("follow");
+  updatePanel();
+}
+function recover() {
+  if (session.mode !== "free") return reset();
+  recoverFreeRoam(session);
+  indicator = 0;
+  accumulator = 0;
+  input.clear();
+  world?.centerLook();
+}
+function shiftDirection() {
+  if (session.mode === "free" && changeDirection(session)) input.clear();
+}
 function pause() {
   if (session.stage !== "drive") return;
   session.paused = !session.paused;
@@ -83,7 +117,8 @@ function pause() {
 const input = createInput((key) => {
   if (help.open) return;
   if (key === "KeyP") pause();
-  if (key === "KeyR") reset();
+  if (key === "KeyR") recover();
+  if (key === "KeyX") shiftDirection();
   if (key === "KeyQ") indicator = indicator === -1 ? 0 : -1;
   if (key === "KeyE") indicator = indicator === 1 ? 0 : 1;
   if (key === "KeyC") {
@@ -106,6 +141,14 @@ document.addEventListener("click", (event) => {
     "button",
   );
   if (!button) return;
+  if (button.id === "free-roam" || button.id === "free-zuglo") startFreeRoam();
+  if (button.id === "free-practice") startFreeRoam("signals");
+  if (button.dataset.layout)
+    startFreeRoam(button.dataset.layout as JunctionLayout);
+  if (button.id === "free-new" && session.mode === "free")
+    startFreeRoam(session.map ? undefined : session.scenario);
+  if (button.id === "free-recover") recover();
+  if (button.id === "direction") shiftDirection();
   if (button.dataset.indicator) {
     const direction = Number(button.dataset.indicator) as -1 | 1;
     indicator = indicator === direction ? 0 : direction;
@@ -119,6 +162,7 @@ document.addEventListener("click", (event) => {
   }
   if (
     button.id === "start" &&
+    session.mode === "lesson" &&
     world &&
     choice === scenarios.find((s) => s.id === session.scenario)!.answer
   ) {
@@ -127,13 +171,14 @@ document.addEventListener("click", (event) => {
     setCamera("follow");
     updatePanel();
   }
-  if (button.id === "finish") {
+  if (button.id === "finish" && session.mode === "lesson") {
     session.stage = "review";
     session.player.speed = 0;
     input.clear();
     updatePanel();
   }
-  if (button.id === "reset" || button.id === "retry") reset();
+  if (button.id === "reset") recover();
+  if (button.id === "retry") reset();
   if (button.id === "next")
     reset(
       scenarios[
@@ -156,6 +201,29 @@ document.addEventListener("click", (event) => {
   if (button.classList.contains("dialog-close")) help.close();
 });
 function updatePanel() {
+  const free = session.mode === "free";
+  const freeButton = document.querySelector<HTMLButtonElement>("#free-roam")!;
+  freeButton.disabled = !world;
+  freeButton.classList.toggle("active", free);
+  freeButton.setAttribute("aria-pressed", String(free));
+  document.querySelector<HTMLButtonElement>("#direction")!.hidden = !free;
+  document.querySelector<HTMLButtonElement>("#route")!.hidden = free;
+  document.querySelector<HTMLElement>("#route-legend")!.hidden = free;
+  document
+    .querySelector("#reset")!
+    .setAttribute(
+      "aria-label",
+      free ? "Vissza az induláshoz" : "Gyakorlat újrakezdése",
+    );
+  world?.setRoute(!free && routeVisible);
+  if (session.mode === "free") {
+    const key = `free:${session.map?.id ?? "practice"}:${session.scenario}:${session.evaluation.total}`;
+    if (key !== panelKey) {
+      renderFreeRoam(session);
+      panelKey = key;
+    }
+    return;
+  }
   if (passed(session) && !completed.has(session.scenario)) {
     completed.add(session.scenario);
     try {
@@ -171,7 +239,7 @@ function updatePanel() {
   const eventsKey = session.events
     .map((e) => `${e.code}:${e.severity}`)
     .join(",");
-  const key = `${session.scenario}:${session.stage}:${eventsKey}:${choice}:${completed.size}`;
+  const key = `lesson:${session.scenario}:${session.stage}:${eventsKey}:${choice}:${completed.size}`;
   if (key !== panelKey) {
     renderLesson(
       session,
@@ -194,18 +262,43 @@ const speed = document.querySelector("#speed")!,
   notice = document.querySelector("#drive-notice")!;
 const pauseButton = document.querySelector<HTMLButtonElement>("#pause")!;
 function updateDashboard() {
+  const map = session.mode === "free" ? session.map : null;
+  document.querySelector("#location-name")!.textContent = map
+    ? streetAt(map, session.player)
+    : "Hársfa tér";
+  document.querySelector("#location-detail")!.textContent = map
+    ? "Budapest XIV. · térképprototípus"
+    : "Gyakorlópálya · Budapest";
+  if (map) updateMapPosition(map, session.player);
   speed.textContent = speedLabel(session.player.speed);
   timer.textContent = `${String(Math.floor(session.elapsed / 60)).padStart(2, "0")}:${String(Math.floor(session.elapsed % 60)).padStart(2, "0")}`;
-  gear.textContent = session.stage === "drive" ? "D" : "P";
+  gear.textContent =
+    session.mode === "free" && session.direction === -1
+      ? "R"
+      : session.stage === "drive"
+        ? "D"
+        : "P";
+  const directionButton =
+    document.querySelector<HTMLButtonElement>("#direction")!;
+  directionButton.textContent = gear.textContent;
+  directionButton.disabled = session.player.speed !== 0;
+  directionButton.setAttribute(
+    "aria-label",
+    session.mode === "free" && session.direction === -1
+      ? "Előremenet kapcsolása · X"
+      : "Hátramenet kapcsolása · X",
+  );
   status.textContent = session.paused
     ? "Szünet"
-    : session.stage === "observe"
-      ? "Megfigyelés"
-      : session.stage === "review"
-        ? "Értékelés"
-        : session.scenario === "left-turn"
-          ? "Balra kanyarodás"
-          : "Egyenesen tovább";
+    : session.mode === "free"
+      ? "Szabad vezetés"
+      : session.stage === "observe"
+        ? "Megfigyelés"
+        : session.stage === "review"
+          ? "Értékelés"
+          : session.scenario === "left-turn"
+            ? "Balra kanyarodás"
+            : "Egyenesen tovább";
   document
     .querySelectorAll<HTMLButtonElement>("[data-indicator]")
     .forEach((button) => {
@@ -223,7 +316,19 @@ function updateDashboard() {
   if (session.stage === "drive") {
     if (session.paused)
       message = "Szünet · A folytatáshoz nyomd meg a P billentyűt.";
-    else if (session.scenario === "signals" && !session.crossedLine) {
+    else if (session.mode === "free") {
+      const last = session.evaluation.events.at(-1);
+      if (session.blocked === "edge")
+        message =
+          "A pálya vége · X: hátramenet álló helyzetben · R: vissza az induláshoz.";
+      else if (session.blocked)
+        message =
+          "Megálltál az akadálynál · Tolass vissza (X), vagy térj vissza az induláshoz (R).";
+      else if (last && session.elapsed - last.time < 6) message = last.message;
+      else if (session.direction === -1)
+        message =
+          "Hátramenet · W: gáz · S / Space: fék · X: előremenet álló helyzetben.";
+    } else if (session.scenario === "signals" && !session.crossedLine) {
       const signal = signalsAt(session.elapsed).ns;
       message =
         signal === "green"
@@ -247,7 +352,8 @@ function frame(now: number) {
   if (session.stage === "drive" && !session.paused) {
     accumulator += dt;
     while (accumulator >= 1 / 60) {
-      stepSession(session, controls, 1 / 60);
+      if (session.mode === "free") stepFreeRoam(session, controls, 1 / 60);
+      else stepSession(session, controls, 1 / 60);
       accumulator -= 1 / 60;
     }
   } else accumulator = 0;

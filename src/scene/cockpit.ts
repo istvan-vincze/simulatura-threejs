@@ -55,11 +55,19 @@ export async function createCockpit() {
       time: number,
       driving: boolean,
       turning: boolean,
+      freeRoam?: { direction: 1 | -1 },
     ) {
       root.position.set(vehicle.x, 0.04, vehicle.z);
       root.rotation.y = -vehicle.yaw;
       wheel.rotation.z = -vehicle.steering * 5;
-      instruments.update(vehicle.speed, indicator, time, driving, turning);
+      instruments.update(
+        vehicle.speed,
+        indicator,
+        time,
+        driving,
+        turning,
+        freeRoam,
+      );
     },
     dispose() {
       const geometries = new Set<THREE.BufferGeometry>();
